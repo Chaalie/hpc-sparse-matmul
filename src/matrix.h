@@ -1,11 +1,15 @@
 #ifndef __MATRIX_H__
 #define __MATRIX_H__
 
+#include "communication.h"
+
+#include <mpi.h>
+
+#include <tuple>
 #include <vector>
-#include <iostream>
 #include <fstream>
 #include <cassert>
-#include <tuple>
+#include <iostream>
 
 struct MatrixIndex {
     int row;
@@ -37,8 +41,14 @@ public:
 
     /* Returns an original matrix filled with zeros besides provided submatrix. */
     SparseMatrix maskSubMatrix(MatrixRange& range);
-    SparseMatrix::packed pack();
-    static SparseMatrix unpack(SparseMatrix::packed& data);
+
+    PackedData pack(MPI_Comm comm = MPI_COMM_WORLD);
+    static SparseMatrix unpack(PackedData& data, MPI_Comm comm = MPI_COMM_WORLD);
+
+    void Send(int destProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
+    void Isend(int destProcessId, MPI_Request& req, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
+    static SparseMatrix Recv(int srcProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
+
     void print();
     void printFull();
 

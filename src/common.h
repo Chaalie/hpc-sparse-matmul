@@ -2,14 +2,14 @@
 #define __COMMON_H__
 
 #include "matrix.h"
+#include "communication.h"
 
 #include <mpi.h>
+#include <vector>
 #include <fstream>
 #include <cassert>
 #include <iostream>
 #include <functional>
-
-const int COORDINATOR_PROCESS_ID = 0;
 
 class ProgramOptions {
    public:
@@ -63,7 +63,6 @@ public:
 };
 
 bool isCoordinator(int rank);
-int getMatrixDimension(int rank, std::string& sparseMatrixFileName);
 MatrixRange getSparseMatrixRangeOfProcess(Environment& env, int processId);
 MatrixRange getDenseMatrixRangeOfProcess(Environment& env, int processId);
 

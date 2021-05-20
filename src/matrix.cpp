@@ -1,9 +1,11 @@
 #include "matrix.h"
+#include "communication.h"
 
+#include <mpi.h>
 #include <vector>
-#include <iostream>
 #include <fstream>
 #include <cassert>
+#include <iostream>
 
 std::ostream& operator<<(std::ostream &out, const MatrixIndex& mIdx) {
     out << "(" << "row: " << mIdx.row << ", " << "col: " << mIdx.col << ")";
@@ -78,28 +80,82 @@ SparseMatrix SparseMatrix::maskSubMatrix(MatrixRange& range) {
     return SparseMatrix(newValues, newRowIdx, newColIdx);
 }
 
-SparseMatrix::packed SparseMatrix::pack() {
-    return { 1, 42, 2, 0, 1, 1, 0 };
+PackedData SparseMatrix::pack(MPI_Comm comm) {
+    PackedData buf;
+    int size, pos = 0, packSize;
+
+    // pack @this->values
+    MPI_Pack_size(1, MPI_INT, comm, &size);
+    buf.resize(pos + size);
+    packSize = this->values.size();
+    MPI_Pack(&packSize, 1, MPI_INT, buf.data(), buf.size(), &pos, comm);
+
+    MPI_Pack_size(this->values.size(), MPI_DOUBLE, comm, &size);
+    buf.resize(pos + size);
+    MPI_Pack(this->values.data(), this->values.size(), MPI_DOUBLE, buf.data(), buf.size(), &pos, comm);
+
+    // pack @this->rowIdx
+    MPI_Pack_size(1, MPI_INT, comm, &size);
+    buf.resize(pos + size);
+    packSize = this->rowIdx.size();
+    MPI_Pack(&packSize, 1, MPI_INT, buf.data(), buf.size(), &pos, comm);
+
+    MPI_Pack_size(this->rowIdx.size(), MPI_INT, comm, &size);
+    buf.resize(pos + size);
+    MPI_Pack(this->rowIdx.data(), this->rowIdx.size(), MPI_INT, buf.data(), buf.size(), &pos, comm);
+
+    // pack @this->colIdx
+    MPI_Pack_size(1, MPI_INT, comm, &size);
+    buf.resize(pos + size);
+    packSize = this->colIdx.size();
+    MPI_Pack(&packSize, 1, MPI_INT, buf.data(), buf.size(), &pos, comm);
+
+    MPI_Pack_size(this->colIdx.size(), MPI_INT, comm, &size);
+    buf.resize(pos + size);
+    MPI_Pack(this->colIdx.data(), this->colIdx.size(), MPI_INT, buf.data(), buf.size(), &pos, comm);
+
+    return buf;
 }
 
-SparseMatrix SparseMatrix::unpack(SparseMatrix::packed& data) {
-    int idx = 0;
-    std::vector<double> values(data[idx++]);
-    for (int i = 0; i < (int)values.size(); i++) {
-        values[i] = data[idx++];
-    }
+SparseMatrix SparseMatrix::unpack(PackedData& buf, MPI_Comm comm) {
+    int pos = 0;
 
-    std::vector<int> rowIdx(data[idx++]);
-    for (int i = 0; i < (int)rowIdx.size(); i++) {
-        rowIdx[i] = data[idx++];
-    }
+    // unpack @this->values
+    int valuesSize;
+    MPI_Unpack(buf.data(), buf.size(), &pos, &valuesSize, 1, MPI_INT, comm);
+    std::vector<double> values(valuesSize);
+    MPI_Unpack(buf.data(), buf.size(), &pos, values.data(), valuesSize, MPI_DOUBLE, comm);
 
-    std::vector<int> colIdx(data[idx++]);
-    for (int i = 0; i < (int)colIdx.size(); i++) {
-        colIdx[i] = data[idx++];
-    }
+    // unpack @this->rowIdx
+    int rowIdxSize;
+    MPI_Unpack(buf.data(), buf.size(), &pos, &rowIdxSize, 1, MPI_INT, comm);
+    std::vector<int> rowIdx(rowIdxSize);
+    MPI_Unpack(buf.data(), buf.size(), &pos, rowIdx.data(), rowIdxSize, MPI_INT, comm);
+
+    // unpack @this->colIdx
+    int colIdxSize;
+    MPI_Unpack(buf.data(), buf.size(), &pos, &colIdxSize, 1, MPI_INT, comm);
+    std::vector<int> colIdx(colIdxSize);
+    MPI_Unpack(buf.data(), buf.size(), &pos, colIdx.data(), colIdxSize, MPI_INT, comm);
 
     return SparseMatrix(values, rowIdx, colIdx);
+}
+
+void SparseMatrix::Send(int destProcessId, int tag, MPI_Comm comm) {
+    PackedData data = this->pack();
+    communication::Send<PackedData>(data, destProcessId, tag, comm);
+}
+
+void SparseMatrix::Isend(int destProcessId, MPI_Request& req, int tag, MPI_Comm comm) {
+    PackedData data = this->pack();
+    communication::Isend<PackedData>(data, destProcessId, tag, req, comm);
+}
+
+SparseMatrix SparseMatrix::Recv(int srcProcessId, int tag, MPI_Comm comm) {
+    PackedData data;
+    communication::Recv<PackedData>(data, srcProcessId, tag, comm);
+
+    return SparseMatrix::unpack(data);
 }
 
 void SparseMatrix::print() {
@@ -132,7 +188,7 @@ void SparseMatrix::printFull() {
             double value = (rowStart <= vIdx && vIdx < rowEnd && this->colIdx[vIdx] == c)
                 ? this->values[vIdx++]
                 : 0.0;
-            std::cout << std::fixed << value << " ";
+            std::cout << value << " ";
         }
         std::cout << std::endl;
     }

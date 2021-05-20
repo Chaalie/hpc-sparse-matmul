@@ -9,6 +9,8 @@ add_executable(matrix-mul
     src/generator/densematgen.h
     src/common.h
     src/common.cpp
+    src/communication.h
+    src/communication.cpp
     src/matrix.h
     src/matrix.cpp
     src/main.cpp)

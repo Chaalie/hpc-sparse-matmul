@@ -1,12 +1,7 @@
 #include "common.h"
-#include "matrix.h"
-
-#include <mpi.h>
 
 #include <set>
 #include <map>
-#include <memory>
-#include <functional>
 
 enum OptionType {
     POSITIONAL = 0,
@@ -163,37 +158,11 @@ ReplicationGroup ReplicationGroup::ofProcess(Environment& env, int processId) {
 
     int groupId;
     if (processId < processesInBiggerGroups) {
-        groupId = processId / processesInBiggerGroups;
+        groupId = processId / (baseGroupSize + 1);
     } else {
         groupId = numOfBiggerGroups + (processId - processesInBiggerGroups) / baseGroupSize;
     }
     return ReplicationGroup::ofId(env, groupId);
-}
-
-bool isCoordinator(int rank) {
-    return rank == COORDINATOR_PROCESS_ID;
-}
-
-int getMatrixDimension(int rank, std::string& sparseMatrixFileName) {
-    int dimension;
-
-    if (isCoordinator(rank)) {
-        std::ifstream matrixFile(sparseMatrixFileName);
-
-        int width, height;
-        matrixFile >> width >> height;
-        assert(width == height);
-
-        matrixFile.close();
-
-        dimension = width;
-        MPI_Bcast(&dimension, 1, MPI_INT, rank, MPI_COMM_WORLD);
-    }
-    else {
-        MPI_Bcast(&dimension, 1, MPI_INT, COORDINATOR_PROCESS_ID, MPI_COMM_WORLD);
-    }
-
-    return dimension;
 }
 
 int getSparseMatrixFirstColumn(Environment& env, int processId) {
