@@ -1,22 +1,36 @@
 #include "common.h"
+#include "matrix.h"
+
+#include <mpi.h>
 
 #include <set>
 #include <map>
 #include <memory>
 #include <functional>
 
+enum OptionType {
+    POSITIONAL = 0,
+    NAMED,
+    FLAG
+};
+
+enum OptionRequired {
+    REQUIRED = 0,
+    OPTIONAL
+};
+
 class OptionBase {
 public:
-    bool required;
-    bool isFlag;
+    OptionRequired required;
+    OptionType type;
     std::string valueName;
     std::string description;
 
     virtual void parse(const std::string &arg) const = 0;
 
-    OptionBase(bool required, bool isFlag, std::string valueName, std::string description) :
+    OptionBase(OptionRequired required, OptionType type, std::string valueName, std::string description) :
         required(required),
-        isFlag(isFlag),
+        type(type),
         valueName(valueName),
         description(description) {}
 };
@@ -27,8 +41,8 @@ private:
     T* dest;
 
 public:
-    Option(bool required, bool isFlag, std::string valueName, std::string description, T* dest)
-        : OptionBase(required, isFlag, valueName, description), dest(dest) {};
+    Option(OptionRequired required, OptionType type, std::string valueName, std::string description, T* dest)
+        : OptionBase(required, type, valueName, description), dest(dest) {}
     
     void parse(const std::string &arg) const;
 };
@@ -46,10 +60,10 @@ void printUsage() {
     std::cout << "Usage" << std::endl;
 }
 
-InputOptions InputOptions::parse(int argc, char* argv[]) {
+ProgramOptions::ProgramOptions(int argc, char* argv[]) {
     std::string sparseMatrixFile;
     int denseMatrixSeed;
-    int replicationGroupSize;
+    int numReplicationGroups;
     int multiplicationExponent;
     bool useInnerAlgorithm = false;
     bool printMatrix = false;
@@ -57,13 +71,13 @@ InputOptions InputOptions::parse(int argc, char* argv[]) {
     int printGreaterEqualValue;
 
     const std::map<std::string, OptionBase*> supportedOptions {
-        {"-f", new Option<std::string>(true,  false, "sparse_matrix_file",    "", &sparseMatrixFile) },
-        {"-s",         new Option<int>(true,  false, "seed_for_dense_matrix", "", &denseMatrixSeed) },
-        {"-c",         new Option<int>(true,  false, "repl_group_size",       "", &replicationGroupSize) },
-        {"-e",         new Option<int>(true,  false, "exponent",              "", &multiplicationExponent) },
-        {"-g",         new Option<int>(false, false, "ge_value",              "", &printGreaterEqualValue) },
-        {"-v",        new Option<bool>(false, true,  "",                      "", &printMatrix) },
-        {"-i",        new Option<bool>(false, true,  "",                      "", &useInnerAlgorithm) },
+        {"-f", new Option<std::string>(REQUIRED,  NAMED, "sparse_matrix_file",    "", &sparseMatrixFile) },
+        {"-s",         new Option<int>(REQUIRED,  NAMED, "seed_for_dense_matrix", "", &denseMatrixSeed) },
+        {"-c",         new Option<int>(REQUIRED,  NAMED, "repl_group_size",       "", &numReplicationGroups) },
+        {"-e",         new Option<int>(REQUIRED,  NAMED, "exponent",              "", &multiplicationExponent) },
+        {"-g",         new Option<int>(OPTIONAL,  NAMED, "ge_value",              "", &printGreaterEqualValue) },
+        {"-v",        new Option<bool>(OPTIONAL,  FLAG,  "",                      "", &printMatrix) },
+        {"-i",        new Option<bool>(OPTIONAL,  FLAG,  "",                      "", &useInnerAlgorithm) },
     };
 
     std::set<std::string> foundOptions;
@@ -78,7 +92,7 @@ InputOptions InputOptions::parse(int argc, char* argv[]) {
             } else {
                 foundOptions.insert(optionName);
 
-                if (optIt->second->isFlag) {
+                if (optIt->second->type == FLAG) {
                     optIt->second->parse("");
                 } else {
                     optIt->second->parse(argv[++i]);
@@ -92,7 +106,7 @@ InputOptions InputOptions::parse(int argc, char* argv[]) {
     }
 
     for (auto it: supportedOptions) {
-        if (it.second->required && foundOptions.find(it.first) == foundOptions.end()) {
+        if (it.second->required == REQUIRED && foundOptions.find(it.first) == foundOptions.end()) {
             std::cout << "Missing required option: " << it.first << std::endl;
             printUsage();
             exit(1);
@@ -103,14 +117,129 @@ InputOptions InputOptions::parse(int argc, char* argv[]) {
         printGreaterEqual = true;
     }
 
-    return InputOptions(
-        sparseMatrixFile,
-        denseMatrixSeed,
-        replicationGroupSize,
-        multiplicationExponent,
-        useInnerAlgorithm,
-        printMatrix,
-        printGreaterEqual,
-        printGreaterEqualValue
+    this->sparseMatrixFile = sparseMatrixFile;
+    this->denseMatrixSeed = denseMatrixSeed;
+    this->numReplicationGroups = numReplicationGroups;
+    this->multiplicationExponent = multiplicationExponent;
+    this->useInnerAlgorithm = useInnerAlgorithm;
+    this->printMatrix = printMatrix;
+    this->printGreaterEqual = printGreaterEqual;
+    this->printGreaterEqualValue = printGreaterEqualValue;
+}
+
+Environment::Environment(int localId, int numProcesses, int matrixDimension, ProgramOptions options) : localId(localId),
+                                                                                                       numProcesses(numProcesses),
+                                                                                                       numReplicationGroups(options.numReplicationGroups),
+                                                                                                       matrixDimension(matrixDimension),
+                                                                                                       localIsCoordinator(isCoordinator(localId)) {}
+
+ReplicationGroup::ReplicationGroup(int id, int numProcesses, int numReplicationGroups) : id(id) {
+    this->firstProcessId =
+        this->id * (numProcesses / numReplicationGroups)
+      + std::min(this->id, numProcesses % numReplicationGroups);
+    this->size = std::min(
+        numProcesses - this->firstProcessId,
+        numProcesses / numReplicationGroups + (this->id < numProcesses % numReplicationGroups)
     );
+    this->lastProcessId = this->firstProcessId + this->size - 1;
+}
+
+int ReplicationGroup::internalProcessId(int processId) {
+    if (this->firstProcessId <= processId && processId <= this->lastProcessId) {
+        return processId - this->firstProcessId;
+    } else {
+        return -1;
+    }
+}
+
+ReplicationGroup ReplicationGroup::ofId(Environment& env, int groupId) {
+    return ReplicationGroup(groupId, env.numProcesses, env.numReplicationGroups);
+}
+
+ReplicationGroup ReplicationGroup::ofProcess(Environment& env, int processId) {
+    int baseGroupSize = env.numProcesses / env.numReplicationGroups;
+    int numOfBiggerGroups = env.numProcesses % env.numReplicationGroups;
+    int processesInBiggerGroups = numOfBiggerGroups * (baseGroupSize + 1);
+
+    int groupId;
+    if (processId < processesInBiggerGroups) {
+        groupId = processId / processesInBiggerGroups;
+    } else {
+        groupId = numOfBiggerGroups + (processId - processesInBiggerGroups) / baseGroupSize;
+    }
+    return ReplicationGroup::ofId(env, groupId);
+}
+
+bool isCoordinator(int rank) {
+    return rank == COORDINATOR_PROCESS_ID;
+}
+
+int getMatrixDimension(int rank, std::string& sparseMatrixFileName) {
+    int dimension;
+
+    if (isCoordinator(rank)) {
+        std::ifstream matrixFile(sparseMatrixFileName);
+
+        int width, height;
+        matrixFile >> width >> height;
+        assert(width == height);
+
+        matrixFile.close();
+
+        dimension = width;
+        MPI_Bcast(&dimension, 1, MPI_INT, rank, MPI_COMM_WORLD);
+    }
+    else {
+        MPI_Bcast(&dimension, 1, MPI_INT, COORDINATOR_PROCESS_ID, MPI_COMM_WORLD);
+    }
+
+    return dimension;
+}
+
+int getSparseMatrixFirstColumn(Environment& env, int processId) {
+    if (processId >= env.numProcesses) {
+        return env.matrixDimension + 1;
+    }
+
+    ReplicationGroup rg = ReplicationGroup::ofProcess(env, processId);
+    int internalProcessId = rg.internalProcessId(processId);
+    assert(internalProcessId >= 0);
+
+    int baseColumnsPerProcess = env.matrixDimension / rg.size;
+    int firstColumn =
+        internalProcessId * baseColumnsPerProcess
+      + std::min(internalProcessId, env.matrixDimension % rg.size);
+
+    return firstColumn;
+}
+
+MatrixRange getSparseMatrixRangeOfProcess(Environment& env, int processId) {
+    ReplicationGroup rg = ReplicationGroup::ofProcess(env, processId);
+    int internalProcessId = rg.internalProcessId(processId);
+    assert(internalProcessId >= 0);
+
+    int baseColumnsPerProcess = env.matrixDimension / rg.size;
+    int colBeginIncl =
+        internalProcessId * baseColumnsPerProcess
+      + std::min(internalProcessId, env.matrixDimension % rg.size);
+    int colEndExcl = colBeginIncl + baseColumnsPerProcess + (internalProcessId < env.matrixDimension % rg.size);
+
+    return {
+        { 0, colBeginIncl },
+        { env.matrixDimension - 1, colEndExcl - 1 }
+    };
+}
+
+int getDenseMatrixFirstColumn(Environment& env, int processId) {
+    return 1;
+}
+
+MatrixRange getDenseMatrixRangeOfProcess(Environment& env, int processId) {
+    int colBeginIncl = getDenseMatrixFirstColumn(env, processId);
+    int colEndExcl = getDenseMatrixFirstColumn(env, processId + 1); 
+
+    return {
+        { 0, colBeginIncl },
+        { env.matrixDimension - 1, colEndExcl - 1 }
+    };
 }
