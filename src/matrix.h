@@ -8,6 +8,7 @@
 
 #include <tuple>
 #include <vector>
+#include <memory>
 #include <fstream>
 #include <cassert>
 #include <iostream>
@@ -79,6 +80,16 @@ private:
     SparseMatrix(std::vector<double> values, std::vector<int> rowIdx, std::vector<int> colIdx);
 };
 
+template <>
+void communication::Send<SparseMatrix>(SparseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
+
+template <>
+communication::Request communication::Isend<SparseMatrix>(std::shared_ptr<SparseMatrix>& mat, int destProcessId, int tag, MPI_Comm comm);
+
+template <>
+void communication::Recv<SparseMatrix>(SparseMatrix& mat, int srcProcessId, int tag, MPI_Comm comm);
+
+
 class DenseMatrix {
 public:
     typedef std::vector<double> RowType;
@@ -107,14 +118,13 @@ public:
 private:
     DenseMatrix(int dim, int numColumns, std::vector<RowType>& values);
 };
+template <>
+void communication::Send<DenseMatrix>(DenseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
 
 template <>
-void communication::Send<SparseMatrix>(SparseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
+communication::Request communication::Isend<DenseMatrix>(std::shared_ptr<DenseMatrix>& mat, int destProcessId, int tag, MPI_Comm comm);
 
 template <>
-void communication::Isend<SparseMatrix>(SparseMatrix& mat, int destProcessId, MPI_Request& req, int tag, MPI_Comm comm);
-
-template <>
-void communication::Recv<SparseMatrix>(SparseMatrix& mat, int srcProcessId, int tag, MPI_Comm comm);
+void communication::Recv<DenseMatrix>(DenseMatrix& mat, int srcProcessId, int tag, MPI_Comm comm);
 
 #endif /* __MATRIX_H__ */

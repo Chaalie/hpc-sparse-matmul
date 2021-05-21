@@ -4,9 +4,12 @@
 #include "generator/densematgen.h"
 
 #include <mpi.h>
+
 #include <vector>
+#include <memory>
 #include <fstream>
 #include <cassert>
+#include <iomanip>
 #include <iostream>
 
 std::ostream& operator<<(std::ostream &out, const MatrixIndex& mIdx) {
@@ -175,16 +178,14 @@ void communication::Send<SparseMatrix>(SparseMatrix& mat, int destProcessId, int
 }
 
 template <>
-void communication::Isend<SparseMatrix>(SparseMatrix& mat, int destProcessId, MPI_Request& req, int tag, MPI_Comm comm) {
-    PackedData data = std::move(mat.pack());
-    communication::Isend<PackedData>(data, destProcessId, req, tag, comm);
+communication::Request communication::Isend<SparseMatrix>(std::shared_ptr<SparseMatrix>& mat, int destProcessId, int tag, MPI_Comm comm) {
+    std::shared_ptr<PackedData> data = std::make_shared<PackedData>(mat->pack());
+    return communication::Isend<PackedData>(data, destProcessId, tag, comm);
 }
 
 template <>
 void communication::Recv<SparseMatrix>(SparseMatrix& mat, int srcProcessId, int tag, MPI_Comm comm) {
-    PackedData data;
-    communication::Recv<PackedData>(data, srcProcessId, tag, comm);
-
+    PackedData data = communication::Recv<PackedData>(srcProcessId, tag, comm);
     mat = std::move(SparseMatrix::unpack(data));
 }
 
@@ -411,9 +412,9 @@ void communication::Send<DenseMatrix>(DenseMatrix& mat, int destProcessId, int t
 }
 
 template <>
-void communication::Isend<DenseMatrix>(DenseMatrix& mat, int destProcessId, MPI_Request& req, int tag, MPI_Comm comm) {
-    PackedData data = std::move(mat.pack());
-    communication::Isend<PackedData>(data, destProcessId, req, tag, comm);
+communication::Request communication::Isend<DenseMatrix>(std::shared_ptr<DenseMatrix>& mat, int destProcessId, int tag, MPI_Comm comm) {
+    std::shared_ptr<PackedData> data = std::make_shared<PackedData>(mat->pack());
+    return communication::Isend<PackedData>(data, destProcessId, tag, comm);
 }
 
 template <>
@@ -450,7 +451,7 @@ MatrixFragment DenseMatrix::fragmentOfProcess(Environment& env, int processId) {
 void DenseMatrix::print() {
     for (auto &row: this->values) {
         for (auto &field: row) {
-            std::cout << field << " ";
+            std::cout << std::setprecision(5) << std::fixed << "    " << field;
         }
         std::cout << std::endl;
     }

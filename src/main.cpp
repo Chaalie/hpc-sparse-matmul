@@ -22,22 +22,27 @@ int main(int argc, char* argv[]) {
         SparseMatrix fullA = SparseMatrix::fromFile(options.sparseMatrixFile);
 
         // Send to each process its fragment of the matrix
-        std::vector<MPI_Request> requests(numProcesses - 1);
+        std::vector<communication::Request> requests(numProcesses - 1);
         for (int p = 0; p < numProcesses; p++) {
             auto frag = SparseMatrix::fragmentOfProcess(env, p);
-            auto matFrag = fullA.maskSubMatrix(frag);
+            auto matFrag = std::make_shared<SparseMatrix>(fullA.maskSubMatrix(frag));
             if (p == env.localId) {
-                A = std::move(matFrag);
+                A = std::move(*matFrag);
             } else {
-                communication::Isend<SparseMatrix>(matFrag, p, requests[p - 1]);
+                requests[p - 1] = communication::Isend<SparseMatrix>(matFrag, p);
             }
         }
-        std::vector<MPI_Status> statuses(numProcesses - 1);
-        MPI_Waitall(requests.size(), requests.data(), statuses.data());
+        // std::vector<MPI_Status> statuses(numProcesses - 1);
+        // MPI_Waitall(requests.size(), requests.data(), statuses.data());
+        for (auto &req: requests) {
+            MPI_Wait(req.mpi_request.get(), MPI_STATUS_IGNORE);;
+        }
     } else {
         // Get the matrix fragment from coordinator
-        A = communication::Recv<SparseMatrix>(COORDINATOR_PROCESS_ID);
+        communication::Recv<SparseMatrix>(A, COORDINATOR_PROCESS_ID);
     }
+
+    // MPI_Barrier(MPI_COMM_WORLD);
 
     auto frag = DenseMatrix::fragmentOfProcess(env, processId);
     MatrixIndex s, e;

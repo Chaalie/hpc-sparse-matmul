@@ -3,8 +3,13 @@
 #include <mpi.h>
 #include <fstream>
 #include <cassert>
+#include <memory>
 
 using namespace communication;
+
+communication::Request::Request() {}
+
+communication::Request::Request(std::shared_ptr<PackedData> dataPtr) : dataPtr(dataPtr), mpi_request(std::make_shared<MPI_Request>()) {}
 
 template <>
 void communication::Send<PackedData>(PackedData& data, int destProcessId, int tag, MPI_Comm comm) {
@@ -12,8 +17,10 @@ void communication::Send<PackedData>(PackedData& data, int destProcessId, int ta
 }
 
 template <>
-void communication::Isend<PackedData>(PackedData& data, int destProcessId, MPI_Request& req, int tag, MPI_Comm comm) {
-    MPI_Isend(data.data(), data.size(), MPI_PACKED, destProcessId, tag, comm, &req);
+communication::Request communication::Isend<PackedData>(std::shared_ptr<PackedData>& data, int destProcessId, int tag, MPI_Comm comm) {
+    communication::Request req(data);
+    MPI_Isend(req.dataPtr->data(), req.dataPtr->size(), MPI_PACKED, destProcessId, tag, comm, req.mpi_request.get());
+    return req;
 }
 
 template <>
