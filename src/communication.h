@@ -14,16 +14,19 @@ int getMatrixDimension(int processId, std::string& sparseMatrixFileName);
 
 namespace communication {
     template <typename T>
-    void Send(T& data, int destProcessId, int tag, MPI_Comm comm);
+    void Send(T& data, int destProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
 
     template <typename T>
-    void Isend(T& data, int destProcessId, int tag, MPI_Request& req, MPI_Comm comm);
+    void Isend(T& data, int destProcessId, MPI_Request& req, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
 
     template <typename T>
-    void Recv(T& data, int srcProcessId, int tag, MPI_Comm comm);
+    void Recv(T& data, int srcProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
 
     template <typename T>
-    void Irecv(T& data, int srcProcessId, int tag, MPI_Request& req, MPI_Comm comm);
+    T Recv(int srcProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
+
+    template <typename T>
+    void Irecv(T& data, int srcProcessId, MPI_Request& req, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
 };
 
 #endif /* __COMMUNICATION_H__ */

@@ -12,7 +12,7 @@ void communication::Send<PackedData>(PackedData& data, int destProcessId, int ta
 }
 
 template <>
-void communication::Isend<PackedData>(PackedData& data, int destProcessId, int tag, MPI_Request& req, MPI_Comm comm) {
+void communication::Isend<PackedData>(PackedData& data, int destProcessId, MPI_Request& req, int tag, MPI_Comm comm) {
     MPI_Isend(data.data(), data.size(), MPI_PACKED, destProcessId, tag, comm, &req);
 }
 
@@ -26,6 +26,13 @@ void communication::Recv<PackedData>(PackedData& data, int srcProcessId, int tag
 
     data.resize(size);
     MPI_Recv(data.data(), data.size(), MPI_PACKED, srcProcessId, tag, comm, &status);
+}
+
+template <>
+PackedData communication::Recv<PackedData>(int srcProcessId, int tag, MPI_Comm comm) {
+    PackedData data;
+    Recv<PackedData>(data, srcProcessId, tag, comm);
+    return data;
 }
 
 bool isCoordinator(int processId) {

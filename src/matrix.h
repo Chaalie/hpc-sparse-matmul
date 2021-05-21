@@ -1,6 +1,7 @@
 #ifndef __MATRIX_H__
 #define __MATRIX_H__
 
+#include "common.h"
 #include "communication.h"
 
 #include <mpi.h>
@@ -18,63 +19,102 @@ struct MatrixIndex {
     friend std::ostream& operator<< (std::ostream &out, const MatrixIndex& mIdx);
 };
 
-typedef std::tuple<MatrixIndex, MatrixIndex> MatrixRange;
+typedef std::tuple<MatrixIndex, MatrixIndex> MatrixFragment;
 
 class SparseMatrix {
-private:
-    SparseMatrix(std::vector<double> values, std::vector<int> rowIdx, std::vector<int> colIdx);
-
 public:
     int dim;
     std::vector<double> values;
     std::vector<int> rowIdx;
     std::vector<int> colIdx;
 
-    typedef std::vector<char> packed;
-
-    typedef double FieldValue;
-    typedef std::tuple<MatrixIndex, FieldValue> Field;
-
     SparseMatrix();
+    SparseMatrix(const SparseMatrix& other) = delete;
+    SparseMatrix(SparseMatrix&& other);
 
-    static SparseMatrix fromFile(std::string &matrixFileName);
+    SparseMatrix& operator=(const SparseMatrix& other) = delete;
+    SparseMatrix& operator=(SparseMatrix&& other);
 
-    /* Returns an original matrix filled with zeros besides provided submatrix. */
-    SparseMatrix maskSubMatrix(MatrixRange& range);
+    static SparseMatrix fromFile(std::string &otherFileName);
+
+    /* Returns an original other filled with zeros besides provided subother. */
+    SparseMatrix maskSubMatrix(MatrixFragment& fragment);
 
     PackedData pack(MPI_Comm comm = MPI_COMM_WORLD);
     static SparseMatrix unpack(PackedData& data, MPI_Comm comm = MPI_COMM_WORLD);
 
-    void Send(int destProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
-    void Isend(int destProcessId, MPI_Request& req, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
-    static SparseMatrix Recv(int srcProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
-
     void print();
-    void printFull();
+    void printShort();
+
+    static MatrixFragment fragmentOfProcess(Environment& env, int processId);
+
+    typedef double FieldValue;
+    typedef std::tuple<MatrixIndex, FieldValue> Field;
 
     class Iterator {
-    private:
-        SparseMatrix *matrix;
-        int curRowIdx;
-        int curValueIdx;
-
-        void adjustRowIdx();
-
     public:
         using iterator_category = std::forward_iterator_tag;
         using difference_type   = std::ptrdiff_t;
 
-        Iterator(SparseMatrix* matrix, int curValueIdx) noexcept;
+        Iterator(SparseMatrix* other, int curValueIdx) noexcept;
 
         Field operator*() const;
         Iterator& operator++();
         Iterator operator++(int);
         friend bool operator== (const Iterator& a, const Iterator& b);
         friend bool operator!= (const Iterator& a, const Iterator& b);
+
+    private:
+        SparseMatrix *other;
+        int curRowIdx;
+        int curValueIdx;
+
+        void adjustRowIdx();
     };
 
     Iterator begin();
     Iterator end();
+
+private:
+    SparseMatrix(std::vector<double> values, std::vector<int> rowIdx, std::vector<int> colIdx);
 };
+
+class DenseMatrix {
+public:
+    typedef std::vector<double> RowType;
+
+    int dim, numColumns;
+    std::vector<RowType> values;
+
+    DenseMatrix(); 
+    DenseMatrix(const DenseMatrix& other) = delete;
+    DenseMatrix(DenseMatrix&& other);
+
+    DenseMatrix& operator=(const DenseMatrix& other) = delete;
+    DenseMatrix& operator=(DenseMatrix&& other);
+
+    static DenseMatrix blank(int numRows, int numColumns);
+
+    static DenseMatrix generate(MatrixFragment& fragment, int seed);
+
+    PackedData pack(MPI_Comm comm = MPI_COMM_WORLD);
+    static DenseMatrix unpack(PackedData& data, MPI_Comm comm = MPI_COMM_WORLD);
+
+    static MatrixFragment fragmentOfProcess(Environment& env, int processId);
+    
+    void print();
+
+private:
+    DenseMatrix(int dim, int numColumns, std::vector<RowType>& values);
+};
+
+template <>
+void communication::Send<SparseMatrix>(SparseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
+
+template <>
+void communication::Isend<SparseMatrix>(SparseMatrix& mat, int destProcessId, MPI_Request& req, int tag, MPI_Comm comm);
+
+template <>
+void communication::Recv<SparseMatrix>(SparseMatrix& mat, int srcProcessId, int tag, MPI_Comm comm);
 
 #endif /* __MATRIX_H__ */

@@ -1,10 +1,8 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-#include "matrix.h"
 #include "communication.h"
 
-#include <mpi.h>
 #include <vector>
 #include <fstream>
 #include <cassert>
@@ -58,12 +56,10 @@ public:
     int lastProcessId;
 
     int internalProcessId(int processId);
+    int successorOf(int processId);
+    int predecessorOf(int processId);
     static ReplicationGroup ofId(Environment& env, int groupId);
     static ReplicationGroup ofProcess(Environment& env, int processId);
 };
-
-bool isCoordinator(int rank);
-MatrixRange getSparseMatrixRangeOfProcess(Environment& env, int processId);
-MatrixRange getDenseMatrixRangeOfProcess(Environment& env, int processId);
 
 #endif /* __COMMON_H__ */

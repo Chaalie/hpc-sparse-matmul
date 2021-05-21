@@ -147,6 +147,22 @@ int ReplicationGroup::internalProcessId(int processId) {
     }
 }
 
+int ReplicationGroup::successorOf(int processId) {
+    int internalId = this->internalProcessId(processId);
+    assert(internalId >= 0);
+
+    int internalSuccesorId = (internalId + 1) % this->size;
+    return processId + (internalSuccesorId - internalId);
+}
+
+int ReplicationGroup::predecessorOf(int processId) {
+    int internalId = this->internalProcessId(processId);
+    assert(internalId >= 0);
+
+    int internalPredecessorId = (internalId - 1 + this->size) % this->size;
+    return processId + (internalPredecessorId - internalId);
+}
+
 ReplicationGroup ReplicationGroup::ofId(Environment& env, int groupId) {
     return ReplicationGroup(groupId, env.numProcesses, env.numReplicationGroups);
 }
@@ -163,52 +179,4 @@ ReplicationGroup ReplicationGroup::ofProcess(Environment& env, int processId) {
         groupId = numOfBiggerGroups + (processId - processesInBiggerGroups) / baseGroupSize;
     }
     return ReplicationGroup::ofId(env, groupId);
-}
-
-int getSparseMatrixFirstColumn(Environment& env, int processId) {
-    if (processId >= env.numProcesses) {
-        return env.matrixDimension + 1;
-    }
-
-    ReplicationGroup rg = ReplicationGroup::ofProcess(env, processId);
-    int internalProcessId = rg.internalProcessId(processId);
-    assert(internalProcessId >= 0);
-
-    int baseColumnsPerProcess = env.matrixDimension / rg.size;
-    int firstColumn =
-        internalProcessId * baseColumnsPerProcess
-      + std::min(internalProcessId, env.matrixDimension % rg.size);
-
-    return firstColumn;
-}
-
-MatrixRange getSparseMatrixRangeOfProcess(Environment& env, int processId) {
-    ReplicationGroup rg = ReplicationGroup::ofProcess(env, processId);
-    int internalProcessId = rg.internalProcessId(processId);
-    assert(internalProcessId >= 0);
-
-    int baseColumnsPerProcess = env.matrixDimension / rg.size;
-    int colBeginIncl =
-        internalProcessId * baseColumnsPerProcess
-      + std::min(internalProcessId, env.matrixDimension % rg.size);
-    int colEndExcl = colBeginIncl + baseColumnsPerProcess + (internalProcessId < env.matrixDimension % rg.size);
-
-    return {
-        { 0, colBeginIncl },
-        { env.matrixDimension - 1, colEndExcl - 1 }
-    };
-}
-
-int getDenseMatrixFirstColumn(Environment& env, int processId) {
-    return 1;
-}
-
-MatrixRange getDenseMatrixRangeOfProcess(Environment& env, int processId) {
-    int colBeginIncl = getDenseMatrixFirstColumn(env, processId);
-    int colEndExcl = getDenseMatrixFirstColumn(env, processId + 1); 
-
-    return {
-        { 0, colBeginIncl },
-        { env.matrixDimension - 1, colEndExcl - 1 }
-    };
 }
