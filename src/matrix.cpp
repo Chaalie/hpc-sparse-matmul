@@ -28,10 +28,10 @@ SparseMatrix::SparseMatrix(std::vector<double> values, std::vector<int> rowIdx, 
 //                                                         rowIdx(other.rowIdx),
 //                                                         colIdx(other.colIdx) {}
 
-SparseMatrix::SparseMatrix(SparseMatrix&& other) : dim(std::move(other.dim)),
-                                                   values(std::move(other.values)),
-                                                   rowIdx(std::move(other.rowIdx)),
-                                                   colIdx(std::move(other.colIdx)) {}
+// SparseMatrix::SparseMatrix(SparseMatrix&& other) : dim(std::move(other.dim)),
+//                                                    values(std::move(other.values)),
+//                                                    rowIdx(std::move(other.rowIdx)),
+//                                                    colIdx(std::move(other.colIdx)) {}
 
 // SparseMatrix& SparseMatrix::operator=(const SparseMatrix& other) {
 //     this->dim = other.dim;
@@ -41,13 +41,13 @@ SparseMatrix::SparseMatrix(SparseMatrix&& other) : dim(std::move(other.dim)),
 //     return *this;
 // }
 
-SparseMatrix& SparseMatrix::operator=(SparseMatrix&& other) {
-    this->dim = std::move(other.dim);
-    this->values = std::move(other.values);
-    this->rowIdx = std::move(other.rowIdx);
-    this->colIdx = std::move(other.colIdx);
-    return *this;
-}
+// SparseMatrix& SparseMatrix::operator=(SparseMatrix&& other) {
+//     this->dim = std::move(other.dim);
+//     this->values = std::move(other.values);
+//     this->rowIdx = std::move(other.rowIdx);
+//     this->colIdx = std::move(other.colIdx);
+//     return *this;
+// }
 
 SparseMatrix SparseMatrix::fromFile(std::string &otherFileName) {
     std::ifstream otherFile(otherFileName);
@@ -313,9 +313,9 @@ DenseMatrix::DenseMatrix() {}
 //                                                      numColumns(other.numColumns),
 //                                                      values(other.values) {}
 
-DenseMatrix::DenseMatrix(DenseMatrix&& other) : dim(std::move(other.dim)),
-                                                numColumns(std::move(other.numColumns)),
-                                                values(std::move(other.values)) {}
+// DenseMatrix::DenseMatrix(DenseMatrix&& other) : dim(std::move(other.dim)),
+//                                                 numColumns(std::move(other.numColumns)),
+//                                                 values(std::move(other.values)) {}
 
 // DenseMatrix& DenseMatrix::operator=(const DenseMatrix& other) {
 //     this->dim = other.dim;
@@ -324,12 +324,12 @@ DenseMatrix::DenseMatrix(DenseMatrix&& other) : dim(std::move(other.dim)),
 //     return *this;
 // }
 
-DenseMatrix& DenseMatrix::operator=(DenseMatrix&& other) {
-    this->dim = std::move(other.dim);
-    this->numColumns = std::move(other.numColumns);
-    this->values = std::move(other.values);
-    return *this;
-}
+// DenseMatrix& DenseMatrix::operator=(DenseMatrix&& other) {
+//     this->dim = std::move(other.dim);
+//     this->numColumns = std::move(other.numColumns);
+//     this->values = std::move(other.values);
+//     return *this;
+// }
 
 DenseMatrix DenseMatrix::blank(int numRows, int numColumns) {
     std::vector<DenseMatrix::RowType> values(numRows, RowType(numColumns, 0));

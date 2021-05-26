@@ -31,10 +31,10 @@ public:
 
     SparseMatrix();
     SparseMatrix(const SparseMatrix& other) = delete;
-    SparseMatrix(SparseMatrix&& other);
+    SparseMatrix(SparseMatrix&& other) = default;
 
     SparseMatrix& operator=(const SparseMatrix& other) = delete;
-    SparseMatrix& operator=(SparseMatrix&& other);
+    SparseMatrix& operator=(SparseMatrix&& other) = default;
 
     static SparseMatrix fromFile(std::string &otherFileName);
 
@@ -99,10 +99,10 @@ public:
 
     DenseMatrix(); 
     DenseMatrix(const DenseMatrix& other) = delete;
-    DenseMatrix(DenseMatrix&& other);
+    DenseMatrix(DenseMatrix&& other) = default;
 
     DenseMatrix& operator=(const DenseMatrix& other) = delete;
-    DenseMatrix& operator=(DenseMatrix&& other);
+    DenseMatrix& operator=(DenseMatrix&& other) = default;
 
     static DenseMatrix blank(int numRows, int numColumns);
 
