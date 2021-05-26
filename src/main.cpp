@@ -25,9 +25,9 @@ int main(int argc, char* argv[]) {
         std::vector<communication::Request> requests(numProcesses - 1);
         for (int p = 0; p < numProcesses; p++) {
             auto frag = SparseMatrix::fragmentOfProcess(env, p);
-            auto matFrag = std::make_shared<SparseMatrix>(fullA.maskSubMatrix(frag));
+            auto matFrag = fullA.maskSubMatrix(frag);
             if (p == env.localId) {
-                A = std::move(*matFrag);
+                A = std::move(matFrag);
             } else {
                 requests[p - 1] = communication::Isend<SparseMatrix>(matFrag, p);
             }

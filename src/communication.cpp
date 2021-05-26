@@ -9,7 +9,8 @@ using namespace communication;
 
 communication::Request::Request() {}
 
-communication::Request::Request(std::shared_ptr<PackedData> dataPtr) : dataPtr(dataPtr), mpi_request(std::make_shared<MPI_Request>()) {}
+communication::Request::Request(PackedData& data) : dataPtr(std::make_unique<PackedData>(std::move(data))),
+                                                    mpi_request(std::make_unique<MPI_Request>()) {}
 
 template <>
 void communication::Send<PackedData>(PackedData& data, int destProcessId, int tag, MPI_Comm comm) {
@@ -17,7 +18,7 @@ void communication::Send<PackedData>(PackedData& data, int destProcessId, int ta
 }
 
 template <>
-communication::Request communication::Isend<PackedData>(std::shared_ptr<PackedData>& data, int destProcessId, int tag, MPI_Comm comm) {
+communication::Request communication::Isend<PackedData>(PackedData& data, int destProcessId, int tag, MPI_Comm comm) {
     communication::Request req(data);
     MPI_Isend(req.dataPtr->data(), req.dataPtr->size(), MPI_PACKED, destProcessId, tag, comm, req.mpi_request.get());
     return req;

@@ -20,7 +20,7 @@ namespace communication {
     void Send(T& data, int destProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
 
     template <typename T>
-    Request Isend(std::shared_ptr<T>& data, int destProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
+    Request Isend(T& data, int destProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
 
     template <typename T>
     void Recv(T& data, int srcProcessId, int tag = 0, MPI_Comm comm = MPI_COMM_WORLD);
@@ -33,15 +33,15 @@ namespace communication {
 
     class Request {
         private:
-            std::shared_ptr<PackedData> dataPtr;
+            std::unique_ptr<PackedData> dataPtr;
         public:
-            std::shared_ptr<MPI_Request> mpi_request;
+            std::unique_ptr<MPI_Request> mpi_request;
 
             Request();
-            Request(std::shared_ptr<PackedData> dataPtr);
+            Request(PackedData& dataPtr);
 
         template <typename T>
-        friend Request Isend(std::shared_ptr<T>& data, int destProcessId, int tag, MPI_Comm comm);
+        friend Request Isend(T& data, int destProcessId, int tag, MPI_Comm comm);
 
         template <typename T>
         friend Request Irecv(int srcProcessId, int tag, MPI_Comm comm);

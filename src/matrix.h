@@ -84,7 +84,7 @@ template <>
 void communication::Send<SparseMatrix>(SparseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
 
 template <>
-communication::Request communication::Isend<SparseMatrix>(std::shared_ptr<SparseMatrix>& mat, int destProcessId, int tag, MPI_Comm comm);
+communication::Request communication::Isend<SparseMatrix>(SparseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
 
 template <>
 void communication::Recv<SparseMatrix>(SparseMatrix& mat, int srcProcessId, int tag, MPI_Comm comm);
@@ -122,7 +122,7 @@ template <>
 void communication::Send<DenseMatrix>(DenseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
 
 template <>
-communication::Request communication::Isend<DenseMatrix>(std::shared_ptr<DenseMatrix>& mat, int destProcessId, int tag, MPI_Comm comm);
+communication::Request communication::Isend<DenseMatrix>(DenseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
 
 template <>
 void communication::Recv<DenseMatrix>(DenseMatrix& mat, int srcProcessId, int tag, MPI_Comm comm);

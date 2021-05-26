@@ -28,7 +28,7 @@ DenseMatrix multiply(Environment& env, SparseMatrix& baseA, DenseMatrix& baseB, 
     int succ = rg.successorOf(env.localId);
     int pred = rg.predecessorOf(env.localId);
     communication::Request req;
-    std::shared_ptr<PackedData> packedA = std::make_shared<PackedData>(A.pack());
+    PackedData packedA = A.pack();
 
     for (int e = 1; e <= exponent; e++) {
         C = DenseMatrix::blank(B.dim, B.numColumns);
@@ -44,10 +44,10 @@ DenseMatrix multiply(Environment& env, SparseMatrix& baseA, DenseMatrix& baseB, 
             matrixMultiply(A, B, C);
 
             if (i != rg.size - 1) {
-                packedA = std::make_shared<PackedData>(communication::Recv<PackedData>(pred));
+                packedA = communication::Recv<PackedData>(pred);
                 MPI_Wait(req.mpi_request.get(), MPI_STATUS_IGNORE);
 
-                A = SparseMatrix::unpack(*packedA);
+                A = SparseMatrix::unpack(packedA);
             }
         }
 
