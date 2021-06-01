@@ -1,5 +1,7 @@
 #include "communication.h"
 
+#include "common.h"
+
 #include <mpi.h>
 #include <fstream>
 #include <cassert>
@@ -7,50 +9,10 @@
 
 using namespace communication;
 
-communication::Request::Request() {}
-
-communication::Request::Request(PackedData& data) : dataPtr(std::make_unique<PackedData>(std::move(data))),
-                                                    mpi_request(std::make_unique<MPI_Request>()) {}
-
-template <>
-void communication::Send<PackedData>(PackedData& data, int destProcessId, int tag, MPI_Comm comm) {
-    MPI_Send(data.data(), data.size(), MPI_PACKED, destProcessId, tag, comm);
-}
-
-template <>
-communication::Request communication::Isend<PackedData>(PackedData& data, int destProcessId, int tag, MPI_Comm comm) {
-    communication::Request req(data);
-    MPI_Isend(req.dataPtr->data(), req.dataPtr->size(), MPI_PACKED, destProcessId, tag, comm, req.mpi_request.get());
-    return req;
-}
-
-template <>
-void communication::Recv<PackedData>(PackedData& data, int srcProcessId, int tag, MPI_Comm comm) {
-    MPI_Status status;
-    MPI_Probe(srcProcessId, tag, comm, &status);
-
-    int size;
-    MPI_Get_count(&status, MPI_PACKED, &size);
-
-    data.resize(size);
-    MPI_Recv(data.data(), data.size(), MPI_PACKED, srcProcessId, tag, comm, &status);
-}
-
-template <>
-PackedData communication::Recv<PackedData>(int srcProcessId, int tag, MPI_Comm comm) {
-    PackedData data;
-    Recv<PackedData>(data, srcProcessId, tag, comm);
-    return data;
-}
-
-bool isCoordinator(int processId) {
-    return processId == COORDINATOR_PROCESS_ID;
-}
-
 int getMatrixDimension(int processId, std::string& sparseMatrixFileName) {
     int dimension;
 
-    if (isCoordinator(processId)) {
+    if (isMainLeader(processId)) {
         std::ifstream matrixFile(sparseMatrixFileName);
 
         int width, height;

@@ -8,9 +8,13 @@ add_executable(matrix-mul
     src/generator/densematgen.cpp
     src/generator/densematgen.h
     src/common.h
-    src/common.cpp
-    src/communication.h
-    src/communication.cpp
+    src/utils.h
+    src/utils.cpp
+    src/mpi_helpers.h
+    src/program_options.h
+    src/program_options.cpp
+    src/replication_group.h
+    src/replication_group.cpp
     src/multiplication.h
     src/multiplication.cpp
     src/matrix.h

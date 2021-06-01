@@ -3,8 +3,8 @@
 
 #include "matrix.h"
 #include "common.h"
-#include "communication.h"
+#include "context.h"
 
-DenseMatrix multiply(Environment& env, SparseMatrix& matA, DenseMatrix& matB, int exponent);
+DenseMatrix multiply(Context& ctx, SparseMatrix&& matA, DenseMatrix&& matB, int exponent);
 
 #endif /* __MULTIPLICATION_H__ */

@@ -1,53 +1,67 @@
 #ifndef __MATRIX_H__
 #define __MATRIX_H__
 
-#include "common.h"
-#include "communication.h"
-
 #include <mpi.h>
 
+#include <cassert>
+#include <fstream>
+#include <iostream>
+#include <memory>
 #include <tuple>
 #include <vector>
-#include <memory>
-#include <fstream>
-#include <cassert>
-#include <iostream>
+
+#include "common.h"
+#include "mpi_helpers.h"
 
 struct MatrixIndex {
     int row;
     int col;
 
-    friend std::ostream& operator<< (std::ostream &out, const MatrixIndex& mIdx);
+    friend std::ostream& operator<<(std::ostream& out, const MatrixIndex& mIdx);
 };
+
+typedef MatrixIndex MatrixDimension;
 
 typedef std::tuple<MatrixIndex, MatrixIndex> MatrixFragment;
 
-class SparseMatrix {
+class Matrix {
 public:
-    int dim;
-    std::vector<double> values;
-    std::vector<int> rowIdx;
-    std::vector<int> colIdx;
+    MatrixDimension dimension;
 
-    SparseMatrix();
+    Matrix() = default;
+    Matrix(MatrixDimension dimension) : dimension(dimension) {}
+
+    Matrix(const Matrix& other) = delete;
+    Matrix(Matrix&& other) = default;
+
+    Matrix& operator=(const Matrix& other) = delete;
+    Matrix& operator=(Matrix&& other) = default;
+
+    virtual void print(int verbosity = 0) = 0;
+    virtual ~Matrix() = default;
+};
+
+class SparseMatrix : public Matrix {
+public:
+    SparseMatrix() = default;
+    ~SparseMatrix() = default;
+
     SparseMatrix(const SparseMatrix& other) = delete;
     SparseMatrix(SparseMatrix&& other) = default;
 
     SparseMatrix& operator=(const SparseMatrix& other) = delete;
     SparseMatrix& operator=(SparseMatrix&& other) = default;
 
-    static SparseMatrix fromFile(std::string &otherFileName);
+    static SparseMatrix fromFile(std::string& otherFileName);
 
     /* Returns an original other filled with zeros besides provided subother. */
     SparseMatrix maskSubMatrix(MatrixFragment& fragment);
 
-    PackedData pack(MPI_Comm comm = MPI_COMM_WORLD);
-    static SparseMatrix unpack(PackedData& data, MPI_Comm comm = MPI_COMM_WORLD);
+    void join(SparseMatrix&& matrix);
 
-    void print();
-    void printShort();
+    void print(int verbosity) override;
 
-    static MatrixFragment fragmentOfProcess(Environment& env, int processId);
+    static SparseMatrix blank(MatrixDimension dimension);
 
     typedef double FieldValue;
     typedef std::tuple<MatrixIndex, FieldValue> Field;
@@ -55,76 +69,73 @@ public:
     class Iterator {
     public:
         using iterator_category = std::forward_iterator_tag;
-        using difference_type   = std::ptrdiff_t;
+        using difference_type = std::ptrdiff_t;
 
         Iterator(SparseMatrix* other, int curValueIdx) noexcept;
 
         Field operator*() const;
         Iterator& operator++();
         Iterator operator++(int);
-        friend bool operator== (const Iterator& a, const Iterator& b);
-        friend bool operator!= (const Iterator& a, const Iterator& b);
+        friend bool operator==(const Iterator& a, const Iterator& b);
+        friend bool operator!=(const Iterator& a, const Iterator& b);
 
     private:
-        SparseMatrix *other;
+        SparseMatrix* other;
         int curRowIdx;
         int curValueIdx;
 
         void adjustRowIdx();
     };
+    friend bool operator==(const Iterator& a, const Iterator& b);
 
     Iterator begin();
     Iterator end();
 
+    friend PackedData pack<SparseMatrix>(SparseMatrix& matrix, MPI_Comm comm);
+    friend SparseMatrix unpack<SparseMatrix>(char* buf, int size, MPI_Comm comm);
+
 private:
-    SparseMatrix(std::vector<double> values, std::vector<int> rowIdx, std::vector<int> colIdx);
+    std::vector<double> values;
+    std::vector<int> rowIdx;
+    std::vector<int> colIdx;
+
+    void printFull();
+    void printShort();
+
+    SparseMatrix(MatrixDimension dimension, std::vector<double>& values, std::vector<int>& rowIdx,
+                 std::vector<int>& colIdx)
+        : Matrix(dimension), values(std::move(values)), rowIdx(std::move(rowIdx)), colIdx(std::move(colIdx)) {}
 };
 
-template <>
-void communication::Send<SparseMatrix>(SparseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
-
-template <>
-communication::Request communication::Isend<SparseMatrix>(SparseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
-
-template <>
-void communication::Recv<SparseMatrix>(SparseMatrix& mat, int srcProcessId, int tag, MPI_Comm comm);
-
-
-class DenseMatrix {
+class DenseMatrix : public Matrix {
 public:
-    typedef std::vector<double> RowType;
+    DenseMatrix() = default;
+    ~DenseMatrix() = default;
 
-    int dim, numColumns;
-    std::vector<RowType> values;
-
-    DenseMatrix(); 
     DenseMatrix(const DenseMatrix& other) = delete;
     DenseMatrix(DenseMatrix&& other) = default;
 
     DenseMatrix& operator=(const DenseMatrix& other) = delete;
     DenseMatrix& operator=(DenseMatrix&& other) = default;
 
-    static DenseMatrix blank(int numRows, int numColumns);
+    // accessor, instead of operator[][], that is rough to implement optimally
+    double& operator()(int rowIdx, int colIdx);
+
+    void print(int verbosity) override;
+
+    void join(DenseMatrix&& matrix);
+
+    static DenseMatrix blank(MatrixDimension dimension);
 
     static DenseMatrix generate(MatrixFragment& fragment, int seed);
 
-    PackedData pack(MPI_Comm comm = MPI_COMM_WORLD);
-    static DenseMatrix unpack(PackedData& data, MPI_Comm comm = MPI_COMM_WORLD);
-
-    static MatrixFragment fragmentOfProcess(Environment& env, int processId);
-    
-    void print();
+    friend PackedData pack<DenseMatrix>(DenseMatrix& matrix, MPI_Comm comm);
+    friend DenseMatrix unpack<DenseMatrix>(char* buf, int size, MPI_Comm comm);
 
 private:
-    DenseMatrix(int dim, int numColumns, std::vector<RowType>& values);
+    std::vector<double> data;
+
+    DenseMatrix(MatrixDimension dimension, std::vector<double>& data) : Matrix(dimension), data(std::move(data)) {}
 };
-template <>
-void communication::Send<DenseMatrix>(DenseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
-
-template <>
-communication::Request communication::Isend<DenseMatrix>(DenseMatrix& mat, int destProcessId, int tag, MPI_Comm comm);
-
-template <>
-void communication::Recv<DenseMatrix>(DenseMatrix& mat, int srcProcessId, int tag, MPI_Comm comm);
 
 #endif /* __MATRIX_H__ */
