@@ -182,7 +182,7 @@ MatrixFragment utils::getProcessDenseFragment(Context& ctx, int processId) {
 }
 
 DenseMatrix utils::initializeDenseMatrix(Context& ctx, int denseMatrixSeed) {
-    ReplicationGroup rg = ctx.process.denseRG;
+    DenseMatrixReplicationGroup rg = ctx.process.denseRG;
     auto frag = getProcessDenseFragment(ctx, ctx.process.id);
     auto matrixFragment = DenseMatrix::generate(frag, denseMatrixSeed);
     auto packedMatrixFragment = pack<DenseMatrix>(matrixFragment, rg.internalComm);
@@ -262,4 +262,15 @@ int utils::gatherCountGE(Context& ctx, DenseMatrix& matrix, int geValue, int gat
     }
 
     return geCountRet;
+}
+
+void utils::verifyPreconditions(int p, int c, Algorithm algorithm) {
+    switch (algorithm) {
+        case Algorithm::ColumnA:
+            assert(p % c == 0 && "p is not a multiply of c!");
+            break;
+        case Algorithm::InnerABC:
+            assert(p % (c * c) == 0 && "p is not a multiply of c^2!");
+            break;
+    }
 }

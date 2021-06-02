@@ -4,7 +4,7 @@ project (MIMUW-matgen)
 SET(CMAKE_CXX_STANDARD 14)
 set (CMAKE_CXX_FLAGS "-std=c++14 -Wall -O3")
 
-add_executable(matrix-mul
+add_executable(matrixmul
     src/generator/densematgen.cpp
     src/generator/densematgen.h
     src/common.h
@@ -17,8 +17,9 @@ add_executable(matrix-mul
     src/replication_group.cpp
     src/multiplication.h
     src/multiplication.cpp
+    src/mpi_helpers.h
     src/matrix.h
     src/matrix.cpp
     src/main.cpp)
 
-target_link_libraries(matrix-mul ${MPI_C_LIBRARIES})
+target_link_libraries(matrixmul ${MPI_C_LIBRARIES})

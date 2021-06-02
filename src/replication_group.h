@@ -13,11 +13,13 @@ public:
     const int id = -1;
     const int size = -1;
     const int leaderId = -1;
-    const MPI_Comm internalComm = MPI_COMM_NULL;
+    MPI_Comm internalComm = MPI_COMM_NULL;
 
     bool isLeader(const int id) const { return id == leaderId; }
 
     ReplicationGroup() {}
+
+    virtual void freeComms() = 0;
 
 protected:
     ReplicationGroup(int id, int size, int leaderId, MPI_Comm internalComm)
@@ -26,7 +28,9 @@ protected:
 
 class DenseMatrixReplicationGroup : public ReplicationGroup {
 public:
-    const MPI_Comm leadersComm = MPI_COMM_NULL;  // communicator for all replication groups leaders
+    MPI_Comm leadersComm = MPI_COMM_NULL;  // communicator for all replication groups leaders
+
+    void freeComms();
 
     static DenseMatrixReplicationGroup ofProcess(int processId, int numProcesses, int numReplicationGroups,
                                                   int replicationGroupSize, Algorithm algorithm);
@@ -49,9 +53,11 @@ private:
 
 class SparseMatrixReplicationGroup : public ReplicationGroup {
 public:
-    const MPI_Comm predInterComm = MPI_COMM_NULL;  // inter communicator for previous replication group
-    const MPI_Comm succInterComm = MPI_COMM_NULL;  // inter communicator for next replication group
+    MPI_Comm predInterComm = MPI_COMM_NULL;  // inter communicator for previous replication group
+    MPI_Comm succInterComm = MPI_COMM_NULL;  // inter communicator for next replication group
     const int succInterLeader;
+
+    void freeComms();
 
     static SparseMatrixReplicationGroup ofProcess(int processId, int numProcesses, int numReplicationGroups,
                                                   int replicationGroupSize, Algorithm algorithm);

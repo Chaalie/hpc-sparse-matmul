@@ -35,18 +35,18 @@ SparseMatrixReplicationGroup SparseMatrixReplicationGroup::ofProcess<Algorithm::
     int localRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(localRgId, numReplicationGroups);
     int localLeaderId = localRgId * replicationGroupSize;
 
-    MPI_Comm localComm;
+    MPI_Comm localComm = MPI_COMM_NULL;
     MPI_Comm_split(MPI_COMM_WORLD, localRgGlobalId, processId, &localComm);
 
     int predRgId = (localRgId - 1 + numReplicationGroups) % numReplicationGroups;
     int predRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(predRgId, numReplicationGroups);
     int predRgLeaderId = predRgId * replicationGroupSize;
-    MPI_Comm predInterComm;
+    MPI_Comm predInterComm = MPI_COMM_NULL;
 
     int succRgId = (localRgId + 1) % numReplicationGroups;
     // int succRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(succRgId, numReplicationGroups);
     int succRgLeaderId = succRgId * replicationGroupSize;
-    MPI_Comm succInterComm;
+    MPI_Comm succInterComm = MPI_COMM_NULL;
 
     if (localRgId % 2 == 0) {
         MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, succRgLeaderId, localRgGlobalId,
@@ -78,12 +78,11 @@ DenseMatrixReplicationGroup DenseMatrixReplicationGroup::ofProcess<Algorithm::In
     int localRgId = processId / replicationGroupSize;
     int localRgGlobalId = DenseMatrixReplicationGroup::getGlobalId(localRgId, numReplicationGroups);
     int localLeaderId = localRgId * replicationGroupSize;
-    MPI_Comm localComm;
+    MPI_Comm localComm = MPI_COMM_NULL;
     MPI_Comm_split(MPI_COMM_WORLD, localRgGlobalId, processId, &localComm);
 
-    MPI_Comm leadersComm = MPI_COMM_WORLD;
-    int color = (processId == localLeaderId) ? 0
-                                             : MPI_UNDEFINED;
+    MPI_Comm leadersComm = MPI_COMM_NULL;
+    int color = (processId == localLeaderId) ? 0 : MPI_UNDEFINED;
     MPI_Comm_split(MPI_COMM_WORLD, color, localRgId, &leadersComm);
 
     return DenseMatrixReplicationGroup(localRgId, replicationGroupSize, localLeaderId, localComm, leadersComm);
@@ -117,18 +116,18 @@ SparseMatrixReplicationGroup SparseMatrixReplicationGroup::ofProcess<Algorithm::
     int localRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(localRgId, numReplicationGroups);
     int localLeaderId = processId % numReplicationGroups;
 
-    MPI_Comm localComm;
+    MPI_Comm localComm = MPI_COMM_NULL;
     MPI_Comm_split(MPI_COMM_WORLD, localRgGlobalId, processId, &localComm);
 
     int predRgId = (localRgId - 1 + numReplicationGroups) % numReplicationGroups;
     int predRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(predRgId, numReplicationGroups);
     int predRgLeaderId = (predRgId / numShifts) + (predRgId % numShifts) * replicationGroupSize;
-    MPI_Comm predInterComm;
+    MPI_Comm predInterComm = MPI_COMM_NULL;
 
     int succRgId = (localRgId + 1) % numReplicationGroups;
     // int succRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(succRgId, numReplicationGroups);
     int succRgLeaderId = (succRgId / numShifts) + (succRgId % numShifts) * replicationGroupSize;
-    MPI_Comm succInterComm;
+    MPI_Comm succInterComm = MPI_COMM_NULL;
 
     if (localRgId % 2 == 0) {
         MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, succRgLeaderId, localRgGlobalId,
@@ -176,4 +175,21 @@ SparseMatrixReplicationGroup SparseMatrixReplicationGroup::ofProcess(int process
             return SparseMatrixReplicationGroup::ofProcess<Algorithm::InnerABC>(
                 processId, numProcesses, numReplicationGroups, replicationGroupSize);
     }
+}
+
+void safeMPI_Comm_free(MPI_Comm* comm) {
+    if (*comm != MPI_COMM_NULL && *comm != MPI_COMM_WORLD && *comm != MPI_COMM_SELF) {
+        MPI_Comm_free(comm);
+    }
+}
+
+void DenseMatrixReplicationGroup::freeComms() {
+    safeMPI_Comm_free(&this->internalComm);
+    safeMPI_Comm_free(&this->leadersComm);
+}
+
+void SparseMatrixReplicationGroup::freeComms() {
+    safeMPI_Comm_free(&this->internalComm);
+    safeMPI_Comm_free(&this->predInterComm);
+    safeMPI_Comm_free(&this->succInterComm);
 }

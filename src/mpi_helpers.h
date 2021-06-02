@@ -8,9 +8,7 @@
 typedef std::vector<char> PackedData;
 
 template <typename T>
-T unpack(PackedData& packedData, MPI_Comm comm) {
-    return unpack<T>(packedData.data(), packedData.size(), comm);
-};
+T unpack(PackedData& packedData, MPI_Comm comm);
 
 template <typename T>
 T unpack(char* buf, int size, MPI_Comm comm);

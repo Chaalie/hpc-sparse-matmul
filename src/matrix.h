@@ -93,6 +93,7 @@ public:
 
     friend PackedData pack<SparseMatrix>(SparseMatrix& matrix, MPI_Comm comm);
     friend SparseMatrix unpack<SparseMatrix>(char* buf, int size, MPI_Comm comm);
+    friend SparseMatrix unpack(PackedData& packedData, MPI_Comm comm);
 
 private:
     std::vector<double> values;
@@ -106,6 +107,9 @@ private:
                  std::vector<int>& colIdx)
         : Matrix(dimension), values(std::move(values)), rowIdx(std::move(rowIdx)), colIdx(std::move(colIdx)) {}
 };
+
+template <>
+SparseMatrix unpack<SparseMatrix>(PackedData& packedData, MPI_Comm comm);
 
 class DenseMatrix : public Matrix {
 public:
@@ -141,4 +145,6 @@ private:
     DenseMatrix(MatrixDimension dimension, std::vector<double>& data) : Matrix(dimension), data(std::move(data)) {}
 };
 
+template <>
+DenseMatrix unpack<DenseMatrix>(PackedData& packedData, MPI_Comm comm);
 #endif /* __MATRIX_H__ */

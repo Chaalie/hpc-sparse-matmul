@@ -144,24 +144,13 @@ SparseMatrix unpack<SparseMatrix>(char* buf, int size, MPI_Comm comm) {
     return SparseMatrix({rows, columns}, values, rowIdx, colIdx);
 }
 
-// MatrixFragment SparseMatrix::fragmentOfProcess(Context<A>& ctx, int processId) {
-//     ReplicationGroup rg = ReplicationGroup::ofProcess(ctx, processId);
-//     int internalProcessId = rg.internalProcessId(processId);
-//     assert(internalProcessId >= 0);
-
-//     int baseColumnsPerProcess = ctx.matrixDimension / rg.size;
-//     int colBeginIncl =
-//         internalProcessId * baseColumnsPerProcess
-//       + std::min(internalProcessId, ctx.matrixDimension % rg.size);
-//     int colEndExcl = colBeginIncl + baseColumnsPerProcess + (internalProcessId < ctx.matrixDimension % rg.size);
-
-//     return {
-//         { 0, colBeginIncl },
-//         { ctx.matrixDimension - 1, colEndExcl - 1 }
-//     };
-// }
+template <>
+SparseMatrix unpack<SparseMatrix>(PackedData& packedData, MPI_Comm comm) {
+    return unpack<SparseMatrix>(packedData.data(), packedData.size(), comm);
+};
 
 void SparseMatrix::print(int verbosity) {
+    std::cout << this->dimension.row << " " << this->dimension.col << std::endl;
     if (verbosity <= 0) {
         this->printShort();
     } else {
@@ -355,6 +344,11 @@ DenseMatrix unpack<DenseMatrix>(char* buf, int size, MPI_Comm comm) {
     return DenseMatrix({rows, columns}, data);
 }
 
+template <>
+DenseMatrix unpack<DenseMatrix>(PackedData& packedData, MPI_Comm comm) {
+    return unpack<DenseMatrix>(packedData.data(), packedData.size(), comm);
+};
+
 void DenseMatrix::join(DenseMatrix&& matrix) {
     DenseMatrix m = std::move(matrix);
     this->dimension.col += matrix.dimension.col;
@@ -380,6 +374,7 @@ double& DenseMatrix::operator()(int rowIdx, int colIdx) {
 }
 
 void DenseMatrix::print(int) {
+    std::cout << this->dimension.row << " " << this->dimension.col << std::endl;
     for (int r = 0; r < this->dimension.row; r++) {
         for (int c = 0; c < this->dimension.col; c++) {
             std::cout << std::setprecision(5) << std::fixed << " " << (*this)(r, c);

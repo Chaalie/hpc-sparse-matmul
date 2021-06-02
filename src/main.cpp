@@ -13,6 +13,8 @@ int main(int argc, char* argv[]) {
     MPI_Comm_size(MPI_COMM_WORLD, &numProcesses);
     MPI_Comm_rank(MPI_COMM_WORLD, &processId);
 
+    utils::verifyPreconditions(numProcesses, options.replicationGroupSize, options.algorithm);
+
     SparseMatrix A;
     if (isMainLeader(processId)) {
         A = std::move(SparseMatrix::fromFile(options.sparseMatrixFile));
@@ -39,6 +41,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    ctx.process.denseRG.freeComms();
+    ctx.process.sparseRG.freeComms();
     MPI_Finalize();
     return 0;
 }

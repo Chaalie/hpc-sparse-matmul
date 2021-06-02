@@ -24,6 +24,8 @@ MatrixFragment getProcessSparseFragment(Context& ctx, int processId);
 DenseMatrix gatherDenseMatrix(Context& ctx, DenseMatrix& matrix, int gatherTo);
 
 int gatherCountGE(Context& ctx, DenseMatrix& matrix, int geValue, int gatherTo);
+
+void verifyPreconditions(int p, int c, Algorithm algorithm);
 };  // namespace utils
 
 #endif /* __UTILS_H__ */

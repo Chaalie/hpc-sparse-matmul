@@ -6,6 +6,7 @@
 #include "context.h"
 #include "matrix.h"
 #include "multiplication.h"
+#include "mpi_helpers.h"
 
 // Perform C += A * B, C does not have to be blank (zeroes)
 void matrixMultiply(SparseMatrix& A, DenseMatrix& B, DenseMatrix& C) {

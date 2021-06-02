@@ -32,8 +32,9 @@ public:
                                                                         replicationGroupSize, algorithm)),
               sparseRG(SparseMatrixReplicationGroup::ofProcess(id, numProcesses, numReplicationGroups,
                                                                           replicationGroupSize, algorithm)) {}
+        
     };
-    const ProcessInfo process;
+    ProcessInfo process;
 
     Context(int processId, int numProcesses, int matrixDimension, int replicationGroupSize, Algorithm algorithm)
         : numProcesses(numProcesses),
@@ -42,17 +43,7 @@ public:
           numReplicationLayers(replicationGroupSize),
           matrixDimension(matrixDimension),
           algorithm(algorithm),
-          process(processId, numProcesses, numReplicationGroups, replicationGroupSize, algorithm) {
-        switch (algorithm) {
-            case Algorithm::ColumnA:
-                assert(this->numProcesses % this->replicationGroupSize == 0 && "p is not multiply of c!");
-                break;
-            case Algorithm::InnerABC:
-                assert(this->numProcesses % (this->replicationGroupSize * this->replicationGroupSize) == 0 &&
-                       "p is not multiply of c^2!");
-                break;
-        }
-    }
+          process(processId, numProcesses, numReplicationGroups, replicationGroupSize, algorithm) {}
 };
 
 #endif /* __CONTEXT_H__ */
