@@ -241,7 +241,7 @@ DenseMatrix utils::gatherDenseMatrix(Context& ctx, DenseMatrix& matrix, int gath
     return result;
 }
 
-int utils::gatherCountGE(Context& ctx, DenseMatrix& matrix, int geValue, int gatherTo) {
+int utils::gatherCountGE(Context& ctx, DenseMatrix& matrix, double geValue, int gatherTo) {
     int numReplicationGroups = ctx.algorithm == Algorithm::ColumnA ? ctx.numProcesses : ctx.numReplicationGroups;
     DenseMatrixReplicationGroup rg = ctx.process.denseRG;
 

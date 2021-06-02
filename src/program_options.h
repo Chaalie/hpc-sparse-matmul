@@ -15,7 +15,7 @@ public:
     Algorithm algorithm;
     bool printMatrix;
     bool printGreaterEqual;
-    int printGreaterEqualValue;
+    double printGreaterEqualValue;
 
     static ProgramOptions fromCommandLine(int argc, char* argv[]);
 
@@ -24,7 +24,7 @@ public:
 private:
     ProgramOptions(std::string sparseMatrixFile, int denseMatrixSeed, int replicationGroupSize,
                    int multiplicationExponent, Algorithm algorithm, bool printMatrix, bool printGreaterEqual,
-                   int printGreaterEqualValue)
+                   double printGreaterEqualValue)
         : sparseMatrixFile(sparseMatrixFile),
           denseMatrixSeed(denseMatrixSeed),
           replicationGroupSize(replicationGroupSize),

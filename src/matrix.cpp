@@ -355,7 +355,7 @@ void DenseMatrix::join(DenseMatrix&& matrix) {
     this->data.insert(this->data.end(), std::make_move_iterator(m.data.begin()), std::make_move_iterator(m.data.end()));
 }
 
-int DenseMatrix::countGE(MatrixFragment fragment, int geValue) {
+int DenseMatrix::countGE(MatrixFragment fragment, double geValue) {
     MatrixIndex start, end;
     std::tie(start, end) = fragment;
 

@@ -47,6 +47,11 @@ void Option<bool>::parse(const std::string &arg) const {
     *dest = true;
 }
 
+template <>
+void Option<double>::parse(const std::string &arg) const {
+    *dest = std::atof(arg.c_str());
+}
+
 void printUsage() { std::cout << "Usage" << std::endl; }
 
 ProgramOptions ProgramOptions::fromCommandLine(int argc, char *argv[]) {
@@ -57,14 +62,14 @@ ProgramOptions ProgramOptions::fromCommandLine(int argc, char *argv[]) {
     bool useInnerAlgorithm = false;
     bool printMatrix = false;
     bool printGreaterEqual = false;
-    int printGreaterEqualValue;
+    double printGreaterEqualValue;
 
     const std::map<std::string, OptionBase *> supportedOptions{
         {"-f", new Option<std::string>(REQUIRED, NAMED, "sparse_matrix_file", "", &sparseMatrixFile)},
         {"-s", new Option<int>(REQUIRED, NAMED, "seed_for_dense_matrix", "", &denseMatrixSeed)},
         {"-c", new Option<int>(REQUIRED, NAMED, "repl_group_size", "", &replicationGroupSize)},
         {"-e", new Option<int>(REQUIRED, NAMED, "exponent", "", &multiplicationExponent)},
-        {"-g", new Option<int>(OPTIONAL, NAMED, "ge_value", "", &printGreaterEqualValue)},
+        {"-g", new Option<double>(OPTIONAL, NAMED, "ge_value", "", &printGreaterEqualValue)},
         {"-v", new Option<bool>(OPTIONAL, FLAG, "", "", &printMatrix)},
         {"-i", new Option<bool>(OPTIONAL, FLAG, "", "", &useInnerAlgorithm)},
     };

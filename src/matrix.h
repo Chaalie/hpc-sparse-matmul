@@ -131,7 +131,7 @@ public:
 
     void join(DenseMatrix&& matrix);
 
-    int countGE(MatrixFragment fragment, int geValue);
+    int countGE(MatrixFragment fragment, double geValue);
 
     static DenseMatrix blank(MatrixDimension dimension);
 
