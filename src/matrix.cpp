@@ -59,13 +59,13 @@ SparseMatrix SparseMatrix::maskSubMatrix(MatrixFragment& fragment) {
 
     newRowIdx[0] = 0;
     for (int r = 0; r < this->dimension.row; r++) {
-        if (maskStart.row <= r && r <= maskEnd.row) {
+        if (maskStart.row <= r && r < maskEnd.row) {
             int rowStart = this->rowIdx[r];
             int rowEnd = this->rowIdx[r + 1];
 
             for (int i = rowStart; i < rowEnd; i++) {
                 int c = this->colIdx[i];
-                if (maskStart.col <= c && c <= maskEnd.col) {
+                if (maskStart.col <= c && c < maskEnd.col) {
                     newValuesCount++;
                     newValues.push_back(this->values[i]);
                     newColIdx.push_back(c);
@@ -208,8 +208,8 @@ void SparseMatrix::join(SparseMatrix&& matrix) {
     assert(dimension.col == m.dimension.col);
     assert(dimension.row == m.dimension.row);
 
-    SparseMatrix *left = this;
-    SparseMatrix *right = &m;
+    SparseMatrix* left = this;
+    SparseMatrix* right = &m;
     std::vector<double> values(left->values.size() + right->values.size());
     std::vector<int> colIdx(left->colIdx.size() + right->colIdx.size());
     std::vector<int> rowIdx(this->dimension.row + 1);
@@ -230,7 +230,7 @@ void SparseMatrix::join(SparseMatrix&& matrix) {
                 throw "Matrices overlaps";
             }
         }
-        
+
         if (goLeft) {
             values[idx] = left->values[lIdx];
             colIdx[idx++] = left->colIdx[lIdx++];
@@ -297,22 +297,22 @@ SparseMatrix::Iterator SparseMatrix::begin() { return SparseMatrix::Iterator(thi
 SparseMatrix::Iterator SparseMatrix::end() { return SparseMatrix::Iterator(this, this->values.size()); }
 
 DenseMatrix DenseMatrix::blank(MatrixDimension dimension) {
-    std::vector<double> data(dimension.row + dimension.col, 0.0);
+    std::vector<double> data(dimension.row * dimension.col, 0.0);
     return DenseMatrix(dimension, data);
 }
 
 DenseMatrix DenseMatrix::generate(MatrixFragment& frag, int seed) {
     MatrixIndex start, end;
     std::tie(start, end) = frag;
-    int numColumns = end.col - start.col + 1;
-    int numRows = end.row - start.row + 1;
+    int numColumns = end.col - start.col;
+    int numRows = end.row - start.row;
     assert(numColumns > 0);
     assert(numRows > 0);
 
     std::vector<double> data(numRows * numColumns);
     int idx = 0;
-    for (int c = start.col; c <= end.col; c++) {
-        for (int r = start.row; r <= end.row; r++) {
+    for (int c = start.col; c < end.col; c++) {
+        for (int r = start.row; r < end.row; r++) {
             data[idx++] = generate_double(seed, r, c);
         }
     }
@@ -355,24 +355,14 @@ DenseMatrix unpack<DenseMatrix>(char* buf, int size, MPI_Comm comm) {
     return DenseMatrix({rows, columns}, data);
 }
 
-// int getDenseMatrixFirstColumn(Context<A>& ctx, int processId) {
-//     int baseColumnsPerProcess = ctx.matrixDimension / ctx.numProcesses;
-//     return baseColumnsPerProcess * processId
-//          + std::min(processId, ctx.matrixDimension % ctx.numProcesses);
-// }
-
-// MatrixFragment DenseMatrix::fragmentOfProcess(Context<A>& ctx, int processId) {
-//     int colBeginIncl = getDenseMatrixFirstColumn(ctx, processId);
-//     int colEndExcl = getDenseMatrixFirstColumn(ctx, processId + 1);
-
-//     return {
-//         { 0, colBeginIncl },
-//         { ctx.matrixDimension - 1, colEndExcl - 1 }
-//     };
-// }
+void DenseMatrix::join(DenseMatrix&& matrix) {
+    DenseMatrix m = std::move(matrix);
+    this->dimension.col += matrix.dimension.col;
+    this->data.insert(this->data.end(), std::make_move_iterator(m.data.begin()), std::make_move_iterator(m.data.end()));
+}
 
 double& DenseMatrix::operator()(int rowIdx, int colIdx) {
-    int idx = colIdx * this->dimension.col + rowIdx;
+    int idx = colIdx * this->dimension.row + rowIdx;
     return this->data[idx];
 }
 

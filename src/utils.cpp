@@ -26,9 +26,7 @@ SparseMatrix utils::initializeSparseMatrix(Context& ctx, SparseMatrix& wholeMatr
         // distribute sparse matrix
         for (int p = 0; p < ctx.numProcesses; p++) {
             MatrixFragment frag = utils::getProcessSparseFragment(ctx, p);
-            std::cout << "Fragment of " << p << " " << std::get<0>(frag) << " " << std::get<1>(frag) << std::endl;
             auto matrixFragment = std::move(wholeMatrix.maskSubMatrix(frag));
-            matrixFragment.print(1);
             auto packedMatrixFragment = pack<SparseMatrix>(matrixFragment, MPI_COMM_WORLD);
 
             sendSizes[p] = packedMatrixFragment.size();
@@ -45,10 +43,10 @@ SparseMatrix utils::initializeSparseMatrix(Context& ctx, SparseMatrix& wholeMatr
     MPI_Scatterv(accSendData.data(), sendSizes.data(), sendDisplacements.data(), MPI_PACKED, recvData.data(), recvSize,
                  MPI_PACKED, MAIN_LEADER_ID, MPI_COMM_WORLD);
 
-    int rgAccRecvSize = 0;                                             // total size of packed data in replication group
+    int rgAccRecvSize = 0;                            // total size of packed data in replication group
     std::vector<int> rgPackedSizes(rg.size);          // size of each member's packed data
     std::vector<int> rgPackedDisplacements(rg.size);  // displacement of each member's packed data
-    PackedData rgAccRecvData;                                          // accumulated packed data of replication group
+    PackedData rgAccRecvData;                         // accumulated packed data of replication group
 
     // gather information about size of data held by each replication group member
     MPI_Allgather(&recvSize, 1, MPI_INT, rgPackedSizes.data(), 1, MPI_INT, rg.internalComm);
@@ -66,7 +64,8 @@ SparseMatrix utils::initializeSparseMatrix(Context& ctx, SparseMatrix& wholeMatr
     // unpack and reconstruct replication group's matrix fragment
     SparseMatrix resultMatrix = std::move(SparseMatrix::blank({ctx.matrixDimension, ctx.matrixDimension}));
     for (int i = 0; i < rg.size; i++) {
-        auto matFrag = unpack<SparseMatrix>(rgAccRecvData.data() + rgPackedDisplacements[i], rgPackedSizes[i], rg.internalComm);
+        auto matFrag =
+            unpack<SparseMatrix>(rgAccRecvData.data() + rgPackedDisplacements[i], rgPackedSizes[i], rg.internalComm);
         resultMatrix.join(std::move(matFrag));
     }
 
@@ -74,7 +73,7 @@ SparseMatrix utils::initializeSparseMatrix(Context& ctx, SparseMatrix& wholeMatr
 }
 
 /*
-    Performs a fair chunk split of size @size into @numParts parts. 
+    Performs a fair chunk split of size @size into @numParts parts.
     Split is made so that each difference between parts is as small as possible (max 1).
     Returns a beginning of part @partId.
 */
@@ -83,6 +82,18 @@ int getFairPartBeginning(int partId, int size, int numParts) {
     int numBiggerParts = std::min(partId, size % numParts);
 
     return partId * basePartSize + numBiggerParts;
+}
+
+std::tuple<int, int> getRgMemberFragment(int rgId, int idWithinRg, int matrixDimension, int numReplicationGroups,
+                                         int replicationGroupSize) {
+    int rgFragmentStart = getFairPartBeginning(rgId, matrixDimension, numReplicationGroups);
+    int rgFragmentEnd = getFairPartBeginning(rgId + 1, matrixDimension, numReplicationGroups);
+    int rgFragmentSize = rgFragmentEnd - rgFragmentStart;
+
+    int fragmentStart = rgFragmentStart + getFairPartBeginning(idWithinRg, rgFragmentSize, replicationGroupSize);
+    int fragmentEnd = rgFragmentStart + getFairPartBeginning(idWithinRg + 1, rgFragmentSize, replicationGroupSize);
+
+    return {fragmentStart, fragmentEnd};
 }
 
 std::tuple<int, int> getProcessSparseCoordinates(Context& ctx, int processId) {
@@ -94,7 +105,8 @@ std::tuple<int, int> getProcessSparseCoordinates(Context& ctx, int processId) {
             idWithinRg = processId % ctx.replicationGroupSize;
             break;
         case Algorithm::InnerABC:
-            int numShifts = ctx.numReplicationGroups / ctx.replicationGroupSize;  // shifts required for a single multiplication
+            int numShifts =
+                ctx.numReplicationGroups / ctx.replicationGroupSize;  // shifts required for a single multiplication
             int denseLayerId = processId % ctx.numReplicationLayers;
             int denseGroupId = processId / ctx.replicationGroupSize;
             rgId = (denseLayerId * numShifts) + (denseGroupId % numShifts);
@@ -106,46 +118,94 @@ std::tuple<int, int> getProcessSparseCoordinates(Context& ctx, int processId) {
 }
 
 MatrixFragment utils::getProcessSparseFragment(Context& ctx, int processId) {
-    std::cout << "Calc sparse fragment for " << processId << std::endl;
-    int rgId;
-    int idWithinRg;
+    int rgId, idWithinRg;
     std::tie(rgId, idWithinRg) = getProcessSparseCoordinates(ctx, processId);
-    std::cout << "Got coordinates " << processId << " " << rgId << " " << idWithinRg << std::endl;
 
-    int rgFragmentStart = getFairPartBeginning(rgId, ctx.matrixDimension, ctx.numReplicationGroups);
-    int rgFragmentEnd = getFairPartBeginning(rgId + 1, ctx.matrixDimension, ctx.numReplicationGroups);
-    int rgFragmentSize = rgFragmentEnd - rgFragmentStart;
-    std::cout << "rgFragment got " << rgFragmentStart << " " << rgFragmentEnd << std::endl;
+    int processFragmentStart, processFragmentEnd;
+    std::tie(processFragmentStart, processFragmentEnd) =
+        getRgMemberFragment(rgId, idWithinRg, ctx.matrixDimension, ctx.numReplicationGroups, ctx.replicationGroupSize);
 
-    int processFragmentStart = rgFragmentStart + getFairPartBeginning(idWithinRg, rgFragmentSize, ctx.replicationGroupSize);
-    int processFragmentEnd = rgFragmentStart + getFairPartBeginning(idWithinRg + 1, rgFragmentSize, ctx.replicationGroupSize) - 1;
-
-    int rowStart, rowEnd;
-    int columnStart, columnEnd;
     switch (ctx.algorithm) {
         case Algorithm::ColumnA:
-            rowStart = 0;
-            rowEnd = ctx.matrixDimension;
-            columnStart = processFragmentStart;
-            columnEnd = processFragmentEnd;
-            break;
+            return {{0, processFragmentStart}, {ctx.matrixDimension, processFragmentEnd}};
         case Algorithm::InnerABC:
-            columnStart = 0;
-            columnEnd = ctx.matrixDimension;
-            rowStart = processFragmentStart;
-            rowEnd = processFragmentEnd;
-            break;
+            return {{processFragmentStart, 0}, {processFragmentEnd, ctx.matrixDimension}};
+        default:
+            throw "should not happen";
     }
-
-    return {{rowStart, columnStart}, {rowEnd, columnEnd}};
 }
 
 std::tuple<int, int> getProcessDenseCoordinates(Context& ctx, int processId) {
-    return {0, 0};
+    int rgId;
+    int idWithinRg;
+    switch (ctx.algorithm) {
+        case Algorithm::ColumnA:
+            rgId = processId;
+            idWithinRg = 0;
+            break;
+        case Algorithm::InnerABC:
+            rgId = processId / ctx.replicationGroupSize;
+            idWithinRg = processId % ctx.replicationGroupSize;
+            break;
+    }
+    return {rgId, idWithinRg};
 }
 
 MatrixFragment utils::getProcessDenseFragment(Context& ctx, int processId) {
-    return {{0, 0}, {0, 0}};
+    int rgId, idWithinRg;
+    std::tie(rgId, idWithinRg) = getProcessDenseCoordinates(ctx, processId);
+
+    int numReplicationGroups, replicationGroupSize;
+    switch (ctx.algorithm) {
+        case Algorithm::ColumnA:
+            numReplicationGroups = ctx.numProcesses;
+            replicationGroupSize = 1;
+            break;
+        case Algorithm::InnerABC:
+            numReplicationGroups = ctx.numReplicationGroups;
+            replicationGroupSize = ctx.replicationGroupSize;
+            break;
+    }
+
+    int processFragmentStart, processFragmentEnd;
+    std::tie(processFragmentStart, processFragmentEnd) =
+        getRgMemberFragment(rgId, idWithinRg, ctx.matrixDimension, numReplicationGroups, replicationGroupSize);
+
+    return {{0, processFragmentStart}, {ctx.matrixDimension, processFragmentEnd}};
 }
 
-DenseMatrix utils::initializeDenseMatrix(Context& ctx, int denseMatrixSeed) { return DenseMatrix(); }
+DenseMatrix utils::initializeDenseMatrix(Context& ctx, int denseMatrixSeed) {
+    ReplicationGroup rg = ctx.process.denseRG;
+    auto frag = getProcessDenseFragment(ctx, ctx.process.id);
+    auto matrixFragment = DenseMatrix::generate(frag, denseMatrixSeed);
+    auto packedMatrixFragment = pack<DenseMatrix>(matrixFragment, rg.internalComm);
+
+    int rgAccRecvSize = 0;                            // total size of packed data in replication group
+    std::vector<int> rgPackedSizes(rg.size);          // size of each member's packed data
+    std::vector<int> rgPackedDisplacements(rg.size);  // displacement of each member's packed data
+    PackedData rgAccRecvData;                         // accumulated packed data of replication group
+
+    // gather information about size of data held by each replication group member
+    int packedSize = packedMatrixFragment.size();
+    MPI_Allgather(&packedSize, 1, MPI_INT, rgPackedSizes.data(), 1, MPI_INT, rg.internalComm);
+
+    for (int i = 0; i < (int)rgPackedSizes.size(); i++) {
+        rgPackedDisplacements[i] = rgAccRecvSize;
+        rgAccRecvSize += rgPackedSizes[i];
+    }
+    rgAccRecvData.resize(rgAccRecvSize);
+
+    // gather packed data within replication group
+    MPI_Allgatherv(packedMatrixFragment.data(), packedMatrixFragment.size(), MPI_PACKED, rgAccRecvData.data(),
+                   rgPackedSizes.data(), rgPackedDisplacements.data(), MPI_PACKED, rg.internalComm);
+
+    // unpack and reconstruct replication group's matrix fragment
+    DenseMatrix resultMatrix = std::move(DenseMatrix::blank({ctx.matrixDimension, 0}));
+    for (int i = 0; i < rg.size; i++) {
+        auto matFrag =
+            unpack<DenseMatrix>(rgAccRecvData.data() + rgPackedDisplacements[i], rgPackedSizes[i], rg.internalComm);
+        resultMatrix.join(std::move(matFrag));
+    }
+
+    return resultMatrix;
+}

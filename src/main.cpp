@@ -19,27 +19,36 @@ int main(int argc, char* argv[]) {
     }
 
     int matrixDimension = utils::initializeMatrixDimension(processId, A);
-    std::cout << "got matrix dimension " << matrixDimension << std::endl;
     Context ctx(processId, numProcesses, matrixDimension, options.replicationGroupSize, options.algorithm);
-    std::cout << "after context" << std::endl;
 
     A = utils::initializeSparseMatrix(ctx, A);
+    DenseMatrix B = utils::initializeDenseMatrix(ctx, options.denseMatrixSeed);
 
-    int id = 0;
-    while (id < numProcesses) {
-        MPI_Barrier(MPI_COMM_WORLD);
-        if (id == processId) {
-            A.print(0);
-        } 
-        id++;
-        MPI_Barrier(MPI_COMM_WORLD);
-    }
+    // int id = 0;
+    // while (id < numProcesses) {
+    //     MPI_Barrier(MPI_COMM_WORLD);
+    //     if (id == 0 && processId == 0) {
+    //         B.print(0);
+    //     } 
+    //     id++;
+    //     MPI_Barrier(MPI_COMM_WORLD);
+    // }
 
 
     //DenseMatrix B = utils::initializeDenseMatrix(ctx, options.denseMatrixSeed);
     // At this point, each member of replication group stores the same fragment of sparse and dense matrices (A and B)
 
-    //DenseMatrix C = multiply(ctx, std::move(A), std::move(B), options.multiplicationExponent);
+    DenseMatrix C = multiply(ctx, std::move(A), std::move(B), options.multiplicationExponent);
+
+    int id = 0;
+    while (id < numProcesses) {
+        MPI_Barrier(MPI_COMM_WORLD);
+        if (id == processId) {
+            C.print(1);
+        } 
+        id++;
+        MPI_Barrier(MPI_COMM_WORLD);
+    }
 
     /*
     if (options.printMatrix) {

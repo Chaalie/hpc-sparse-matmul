@@ -51,6 +51,7 @@ class SparseMatrixReplicationGroup : public ReplicationGroup {
 public:
     const MPI_Comm predInterComm = MPI_COMM_NULL;  // inter communicator for previous replication group
     const MPI_Comm succInterComm = MPI_COMM_NULL;  // inter communicator for next replication group
+    const int succInterLeader;
 
     // template <Algorithm A>
     // static SparseMatrixReplicationGroup ofId(int id, int numProcesses, int numReplicationGroups,
@@ -67,10 +68,11 @@ public:
 
 private:
     SparseMatrixReplicationGroup(int id, int size, int leaderId, MPI_Comm internalComm, MPI_Comm predInterComm,
-                                 MPI_Comm succInterComm)
+                                 MPI_Comm succInterComm, int succInterLeader)
         : ReplicationGroup(id, size, leaderId, internalComm),
           predInterComm(predInterComm),
-          succInterComm(succInterComm) {}
+          succInterComm(succInterComm),
+          succInterLeader(succInterLeader) {}
 
     template <Algorithm A>
     static SparseMatrixReplicationGroup ofProcess(int processId, int numProcesses, int numReplicationGroups,

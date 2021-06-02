@@ -40,15 +40,18 @@ DenseMatrix multiply(Context& ctx, SparseMatrix&& inA, DenseMatrix&& inB, int ex
         for (int i = 1; i <= numShifts; i++) {
             if (i != numShifts) {
                 if (isRGLeader) {
+                    sendSize = sendData.size();
                     // Reuse PackedData received from predecessor in replication group,
                     // instead of sending SparseMatrix and performing packing, before
                     // each send.
-                    sendSize = sendData.size();
                     MPI_Ibcast(&sendSize, 1, MPI_INT, MPI_ROOT, ctx.process.sparseRG.predInterComm, &sendReq[0]);
                     MPI_Ibcast(sendData.data(), sendData.size(), MPI_PACKED, MPI_ROOT,
                                ctx.process.sparseRG.predInterComm, &sendReq[1]);
                 }
-                MPI_Bcast(&recvSize, 1, MPI_INT, INTERNAL_LEADER_ID, ctx.process.sparseRG.succInterComm);
+
+                MPI_Ibcast(&recvSize, 1, MPI_INT, INTERNAL_LEADER_ID, ctx.process.sparseRG.succInterComm, &recvReq);
+                MPI_Wait(&recvReq, MPI_STATUS_IGNORE);
+                recvData.resize(recvSize);
                 MPI_Ibcast(recvData.data(), recvData.size(), MPI_PACKED, INTERNAL_LEADER_ID,
                            ctx.process.sparseRG.succInterComm, &recvReq);
             }
