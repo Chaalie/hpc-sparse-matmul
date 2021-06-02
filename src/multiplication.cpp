@@ -27,7 +27,15 @@ DenseMatrix multiply(Context& ctx, SparseMatrix&& inA, DenseMatrix&& inB, int ex
     MPI_Request sendReq[2], recvReq;
     PackedData sendData, recvData;
     int sendSize, recvSize;
-    int numShifts = ctx.numReplicationGroups / ctx.replicationGroupSize;
+    int numShifts;
+    switch (ctx.algorithm) {
+        case Algorithm::ColumnA:
+            numShifts = ctx.numReplicationGroups;
+            break;
+        case Algorithm::InnerABC:
+            numShifts = ctx.numReplicationGroups / ctx.replicationGroupSize;
+            break;
+    }
     int isRGLeader = ctx.process.sparseRG.isLeader(ctx.process.id);
 
     if (isRGLeader) {
