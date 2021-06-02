@@ -5,8 +5,8 @@ SET(CMAKE_CXX_STANDARD 14)
 set (CMAKE_CXX_FLAGS "-std=c++14 -Wall -O3")
 
 add_executable(matrixmul
-    src/generator/densematgen.cpp
-    src/generator/densematgen.h
+    generator/densematgen.cpp
+    generator/densematgen.h
     src/common.h
     src/utils.h
     src/utils.cpp
