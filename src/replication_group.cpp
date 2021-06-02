@@ -44,7 +44,7 @@ SparseMatrixReplicationGroup SparseMatrixReplicationGroup::ofProcess<Algorithm::
     MPI_Comm predInterComm;
 
     int succRgId = (localRgId + 1) % numReplicationGroups;
-    int succRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(succRgId, numReplicationGroups);
+    // int succRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(succRgId, numReplicationGroups);
     int succRgLeaderId = succRgId * replicationGroupSize;
     MPI_Comm succInterComm;
 
@@ -126,7 +126,7 @@ SparseMatrixReplicationGroup SparseMatrixReplicationGroup::ofProcess<Algorithm::
     MPI_Comm predInterComm;
 
     int succRgId = (localRgId + 1) % numReplicationGroups;
-    int succRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(succRgId, numReplicationGroups);
+    // int succRgGlobalId = SparseMatrixReplicationGroup::getGlobalId(succRgId, numReplicationGroups);
     int succRgLeaderId = (succRgId / numShifts) + (succRgId % numShifts) * replicationGroupSize;
     MPI_Comm succInterComm;
 

@@ -38,6 +38,8 @@ DenseMatrix multiply(Context& ctx, SparseMatrix&& inA, DenseMatrix&& inB, int ex
         case Algorithm::InnerABC:
             numShifts = ctx.numReplicationGroups / ctx.replicationGroupSize;
             break;
+        default:
+            throw "should not happen";
     }
 
     int isRGLeader = ctx.process.sparseRG.isLeader(ctx.process.id);

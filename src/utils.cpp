@@ -104,7 +104,7 @@ std::tuple<int, int> getProcessSparseCoordinates(Context& ctx, int processId) {
             rgId = processId / ctx.replicationGroupSize;
             idWithinRg = processId % ctx.replicationGroupSize;
             break;
-        case Algorithm::InnerABC:
+        case Algorithm::InnerABC: {
             int numShifts =
                 ctx.numReplicationGroups / ctx.replicationGroupSize;  // shifts required for a single multiplication
             int denseLayerId = processId % ctx.numReplicationLayers;
@@ -112,6 +112,9 @@ std::tuple<int, int> getProcessSparseCoordinates(Context& ctx, int processId) {
             rgId = (denseLayerId * numShifts) + (denseGroupId % numShifts);
             idWithinRg = processId / ctx.numReplicationGroups;
             break;
+        }
+        default:
+            throw "should not happen";
     }
 
     return {rgId, idWithinRg};
@@ -147,6 +150,8 @@ std::tuple<int, int> getProcessDenseCoordinates(Context& ctx, int processId) {
             rgId = processId / ctx.replicationGroupSize;
             idWithinRg = processId % ctx.replicationGroupSize;
             break;
+        default:
+            throw "should not happen";
     }
     return {rgId, idWithinRg};
 }
@@ -165,6 +170,8 @@ MatrixFragment utils::getProcessDenseFragment(Context& ctx, int processId) {
             numReplicationGroups = ctx.numReplicationGroups;
             replicationGroupSize = ctx.replicationGroupSize;
             break;
+        default:
+            throw "should not happen";
     }
 
     int processFragmentStart, processFragmentEnd;
