@@ -209,3 +209,50 @@ DenseMatrix utils::initializeDenseMatrix(Context& ctx, int denseMatrixSeed) {
 
     return resultMatrix;
 }
+
+DenseMatrix utils::gatherDenseMatrix(Context& ctx, DenseMatrix& matrix, int gatherTo) {
+    DenseMatrixReplicationGroup rg = ctx.process.denseRG;
+    DenseMatrix result = DenseMatrix::blank({matrix.dimension.row, matrix.dimension.row});
+
+    if (rg.isLeader(ctx.process.id)) {
+        int leadersCount;
+        MPI_Comm_size(rg.leadersComm, &leadersCount);
+        std::vector<int> recvSizes(leadersCount);
+        std::vector<int> recvDisplacements(leadersCount);
+
+        int matrixSize = matrix.data.size();
+        MPI_Gather(&matrixSize, 1, MPI_INT, recvSizes.data(), 1, MPI_INT, gatherTo, rg.leadersComm);
+
+        if (ctx.process.id == gatherTo) {
+            for (int i = 1; i < leadersCount; i++) {
+                recvDisplacements[i] = recvDisplacements[i - 1] + recvSizes[i - 1];
+            }
+        }
+        MPI_Gatherv(matrix.data.data(), matrix.data.size(), MPI_DOUBLE, result.data.data(), recvSizes.data(),
+                    recvDisplacements.data(), MPI_DOUBLE, gatherTo, rg.leadersComm);
+    }
+    return result;
+}
+
+int utils::gatherCountGE(Context& ctx, DenseMatrix& matrix, int geValue, int gatherTo) {
+    int numReplicationGroups = ctx.algorithm == Algorithm::ColumnA ? ctx.numProcesses : ctx.numReplicationGroups;
+    DenseMatrixReplicationGroup rg = ctx.process.denseRG;
+
+    int rgFragmentStart = getFairPartBeginning(rg.id, ctx.matrixDimension, numReplicationGroups);
+    MatrixIndex processFragmentStart, processFragmentEnd;
+    std::tie(processFragmentStart, processFragmentEnd) = utils::getProcessDenseFragment(ctx, ctx.process.id);
+    processFragmentStart.col -= rgFragmentStart;
+    processFragmentEnd.col -= rgFragmentStart;
+    MatrixFragment processFragment = {processFragmentStart, processFragmentEnd};
+
+    int geCount = matrix.countGE(processFragment, geValue);
+    int geCountRet = -1;
+
+    MPI_Reduce(&geCount, &geCountRet, 1, MPI_INT, MPI_SUM, INTERNAL_LEADER_ID, rg.internalComm);
+    if (rg.isLeader(ctx.process.id)) {
+        geCount = geCountRet;
+        MPI_Reduce(&geCount, &geCountRet, 1, MPI_INT, MPI_SUM, gatherTo, rg.leadersComm);
+    }
+
+    return geCountRet;
+}

@@ -20,6 +20,10 @@ DenseMatrix initializeDenseMatrix(Context& ctx, int denseMatrixSeed);
 MatrixFragment getProcessDenseFragment(Context& ctx, int processId);
 
 MatrixFragment getProcessSparseFragment(Context& ctx, int processId);
+
+DenseMatrix gatherDenseMatrix(Context& ctx, DenseMatrix& matrix, int gatherTo);
+
+int gatherCountGE(Context& ctx, DenseMatrix& matrix, int geValue, int gatherTo);
 };  // namespace utils
 
 #endif /* __UTILS_H__ */

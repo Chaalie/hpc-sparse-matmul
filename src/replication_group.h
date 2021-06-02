@@ -26,9 +26,7 @@ protected:
 
 class DenseMatrixReplicationGroup : public ReplicationGroup {
 public:
-    // template <Algorithm A>
-    // static DenseMatrixReplicationGroup ofId(int id, int numProcesses, int numReplicationGroups,
-    //                                         int replicationGroupSize);
+    const MPI_Comm leadersComm = MPI_COMM_NULL;  // communicator for all replication groups leaders
 
     static DenseMatrixReplicationGroup ofProcess(int processId, int numProcesses, int numReplicationGroups,
                                                   int replicationGroupSize, Algorithm algorithm);
@@ -40,7 +38,9 @@ public:
     }
 
 private:
-    using ReplicationGroup::ReplicationGroup;
+    DenseMatrixReplicationGroup(int id, int size, int leaderId, MPI_Comm internalComm, MPI_Comm leadersComm)
+        : ReplicationGroup(id, size, leaderId, internalComm),
+          leadersComm(leadersComm) {}
     
     template <Algorithm A>
     static DenseMatrixReplicationGroup ofProcess(int processId, int numProcesses, int numReplicationGroups,
@@ -52,10 +52,6 @@ public:
     const MPI_Comm predInterComm = MPI_COMM_NULL;  // inter communicator for previous replication group
     const MPI_Comm succInterComm = MPI_COMM_NULL;  // inter communicator for next replication group
     const int succInterLeader;
-
-    // template <Algorithm A>
-    // static SparseMatrixReplicationGroup ofId(int id, int numProcesses, int numReplicationGroups,
-    //                                          int replicationGroupSize);
 
     static SparseMatrixReplicationGroup ofProcess(int processId, int numProcesses, int numReplicationGroups,
                                                   int replicationGroupSize, Algorithm algorithm);

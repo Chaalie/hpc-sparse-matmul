@@ -109,6 +109,8 @@ private:
 
 class DenseMatrix : public Matrix {
 public:
+    std::vector<double> data;
+
     DenseMatrix() = default;
     ~DenseMatrix() = default;
 
@@ -121,9 +123,11 @@ public:
     // accessor, instead of operator[][], that is rough to implement optimally
     double& operator()(int rowIdx, int colIdx);
 
-    void print(int verbosity) override;
+    void print(int verbosity = 1) override;
 
     void join(DenseMatrix&& matrix);
+
+    int countGE(MatrixFragment fragment, int geValue);
 
     static DenseMatrix blank(MatrixDimension dimension);
 
@@ -133,7 +137,6 @@ public:
     friend DenseMatrix unpack<DenseMatrix>(char* buf, int size, MPI_Comm comm);
 
 private:
-    std::vector<double> data;
 
     DenseMatrix(MatrixDimension dimension, std::vector<double>& data) : Matrix(dimension), data(std::move(data)) {}
 };

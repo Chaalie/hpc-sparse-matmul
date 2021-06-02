@@ -2,6 +2,7 @@
 #define __PACKED_H__
 
 #include <mpi.h>
+
 #include <vector>
 
 typedef std::vector<char> PackedData;
@@ -12,7 +13,7 @@ T unpack(PackedData& packedData, MPI_Comm comm) {
 };
 
 template <typename T>
-T unpack(char *buf, int size, MPI_Comm comm);
+T unpack(char* buf, int size, MPI_Comm comm);
 
 template <typename T>
 PackedData pack(T& data, MPI_Comm comm);

@@ -22,7 +22,7 @@ public:
     public:
         int id;
         DenseMatrixReplicationGroup denseRG;
-        SparseMatrixReplicationGroup  sparseRG;
+        SparseMatrixReplicationGroup sparseRG;
 
         bool isMainLeader() const { return ::isMainLeader(id); }
 

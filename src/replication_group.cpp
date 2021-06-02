@@ -12,8 +12,9 @@ DenseMatrixReplicationGroup DenseMatrixReplicationGroup::ofProcess<Algorithm::Co
                                                                                        int, int) {
     int replicationGroupSize = 1;
     MPI_Comm localComm = MPI_COMM_SELF;
+    MPI_Comm leadersComm = MPI_COMM_WORLD;
 
-    return DenseMatrixReplicationGroup(processId, replicationGroupSize, processId, localComm);
+    return DenseMatrixReplicationGroup(processId, replicationGroupSize, processId, localComm, leadersComm);
 }
 
 /*
@@ -48,25 +49,17 @@ SparseMatrixReplicationGroup SparseMatrixReplicationGroup::ofProcess<Algorithm::
     MPI_Comm succInterComm;
 
     if (localRgId % 2 == 0) {
-        std::cout << "succ: " << processId << " " << succRgLeaderId << " -> " << localRgGlobalId << std::endl;
         MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, succRgLeaderId, localRgGlobalId,
                              &succInterComm);
-        // MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, predRgLeaderId, predRgGlobalId,
-        //                      &predInterComm);
         if (processId == localLeaderId) {
-            std::cout << "pred: " << processId << " " << predRgLeaderId << " -> " << predRgGlobalId << std::endl;
             MPI_Intercomm_create(MPI_COMM_SELF, INTERNAL_LEADER_ID, MPI_COMM_WORLD, predRgLeaderId, predRgGlobalId,
                                  &predInterComm);
         }
     } else {
         if (processId == localLeaderId) {
-            std::cout << "pred: " << processId << " " << predRgLeaderId << " -> " << predRgGlobalId << std::endl;
             MPI_Intercomm_create(MPI_COMM_SELF, INTERNAL_LEADER_ID, MPI_COMM_WORLD, predRgLeaderId, predRgGlobalId,
                                  &predInterComm);
         }
-        // MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, predRgLeaderId, predRgGlobalId,
-        //                      &predInterComm);
-        std::cout << "succ: " << processId << " " << succRgLeaderId << " -> " << localRgGlobalId << std::endl;
         MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, succRgLeaderId, localRgGlobalId,
                              &succInterComm);
     }
@@ -88,7 +81,12 @@ DenseMatrixReplicationGroup DenseMatrixReplicationGroup::ofProcess<Algorithm::In
     MPI_Comm localComm;
     MPI_Comm_split(MPI_COMM_WORLD, localRgGlobalId, processId, &localComm);
 
-    return DenseMatrixReplicationGroup(localRgId, replicationGroupSize, localLeaderId, localComm);
+    MPI_Comm leadersComm = MPI_COMM_WORLD;
+    int color = (processId == localLeaderId) ? 0
+                                             : MPI_UNDEFINED;
+    MPI_Comm_split(MPI_COMM_WORLD, color, localRgId, &leadersComm);
+
+    return DenseMatrixReplicationGroup(localRgId, replicationGroupSize, localLeaderId, localComm, leadersComm);
 }
 
 /*
