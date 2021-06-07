@@ -63,6 +63,7 @@ ProgramOptions ProgramOptions::fromCommandLine(int argc, char *argv[]) {
     bool printMatrix = false;
     bool printGreaterEqual = false;
     double printGreaterEqualValue;
+    bool printStats = false;
 
     const std::map<std::string, OptionBase *> supportedOptions{
         {"-f", new Option<std::string>(REQUIRED, NAMED, "sparse_matrix_file", "", &sparseMatrixFile)},
@@ -72,6 +73,7 @@ ProgramOptions ProgramOptions::fromCommandLine(int argc, char *argv[]) {
         {"-g", new Option<double>(OPTIONAL, NAMED, "ge_value", "", &printGreaterEqualValue)},
         {"-v", new Option<bool>(OPTIONAL, FLAG, "", "", &printMatrix)},
         {"-i", new Option<bool>(OPTIONAL, FLAG, "", "", &useInnerAlgorithm)},
+        {"-p", new Option<bool>(OPTIONAL, FLAG, "", "", &printStats)},
     };
 
     std::set<std::string> foundOptions;
@@ -113,7 +115,7 @@ ProgramOptions ProgramOptions::fromCommandLine(int argc, char *argv[]) {
 
     return ProgramOptions(sparseMatrixFile, denseMatrixSeed, replicationGroupSize, multiplicationExponent,
                           useInnerAlgorithm ? Algorithm::InnerABC : Algorithm::ColumnA, printMatrix, printGreaterEqual,
-                          printGreaterEqualValue);
+                          printGreaterEqualValue, printStats);
 }
 
 std::ostream &operator<<(std::ostream &os, ProgramOptions po) {
