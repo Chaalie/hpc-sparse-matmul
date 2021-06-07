@@ -52,10 +52,6 @@ DenseMatrix multiply(Context& ctx, SparseMatrix&& inA, DenseMatrix&& inB, int ex
         matC = DenseMatrix::blank(matB.dimension);
 
         for (int i = 1; i <= numShifts; i++) {
-            // if (ctx.process.id == 0) {
-            //     matA.print(1);
-            //     std::cout << "====" << std::endl;
-            // }
             if (i != numShifts) {
                 // Processes are unaware about size of packed data they will receive, thus it need
                 // to be sent (broadcasted) to them.
