@@ -48,20 +48,25 @@ SparseMatrixReplicationGroup SparseMatrixReplicationGroup::ofProcess<Algorithm::
     int succRgLeaderId = succRgId * replicationGroupSize;
     MPI_Comm succInterComm = MPI_COMM_NULL;
 
-    if (localRgId % 2 == 0) {
-        MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, succRgLeaderId, localRgGlobalId,
-                             &succInterComm);
-        if (processId == localLeaderId) {
-            MPI_Intercomm_create(MPI_COMM_SELF, INTERNAL_LEADER_ID, MPI_COMM_WORLD, predRgLeaderId, predRgGlobalId,
-                                 &predInterComm);
+    if (numReplicationGroups > 1) {
+        if (localRgId % 2 == 0) {
+            MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, succRgLeaderId, localRgGlobalId,
+                                 &succInterComm);
+            if (processId == localLeaderId) {
+                MPI_Intercomm_create(MPI_COMM_SELF, INTERNAL_LEADER_ID, MPI_COMM_WORLD, predRgLeaderId, predRgGlobalId,
+                                     &predInterComm);
+            }
+        } else {
+            if (processId == localLeaderId) {
+                MPI_Intercomm_create(MPI_COMM_SELF, INTERNAL_LEADER_ID, MPI_COMM_WORLD, predRgLeaderId, predRgGlobalId,
+                                     &predInterComm);
+            }
+            MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, succRgLeaderId, localRgGlobalId,
+                                 &succInterComm);
         }
     } else {
-        if (processId == localLeaderId) {
-            MPI_Intercomm_create(MPI_COMM_SELF, INTERNAL_LEADER_ID, MPI_COMM_WORLD, predRgLeaderId, predRgGlobalId,
-                                 &predInterComm);
-        }
-        MPI_Intercomm_create(localComm, INTERNAL_LEADER_ID, MPI_COMM_WORLD, succRgLeaderId, localRgGlobalId,
-                             &succInterComm);
+        predInterComm = MPI_COMM_SELF;
+        succInterComm = MPI_COMM_SELF;
     }
 
     return SparseMatrixReplicationGroup(localRgId, replicationGroupSize, localLeaderId, localComm, predInterComm,
