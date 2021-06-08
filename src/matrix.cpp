@@ -150,7 +150,7 @@ SparseMatrix unpack<SparseMatrix>(PackedData& packedData, MPI_Comm comm) {
 };
 
 void SparseMatrix::print(int verbosity) {
-    std::cout << this->dimension.row << " " << this->dimension.col << std::endl;
+    std::cout << this->dimension.row << " " << this->dimension.col << "\n";
     if (verbosity <= 0) {
         this->printShort();
     } else {
@@ -168,7 +168,7 @@ void SparseMatrix::printFull() {
             double value = (rowStart <= vIdx && vIdx < rowEnd && this->colIdx[vIdx] == c) ? this->values[vIdx++] : 0.0;
             std::cout << value << " ";
         }
-        std::cout << std::endl;
+        std::cout << "\n";
     }
 }
 
@@ -177,19 +177,19 @@ void SparseMatrix::printShort() {
     for (auto& v : this->values) {
         std::cout << std::fixed << v << " ";
     }
-    std::cout << std::endl;
+    std::cout << "\n";
 
     std::cout << "C: ";
     for (auto& v : this->colIdx) {
         std::cout << std::fixed << v << " ";
     }
-    std::cout << std::endl;
+    std::cout << "\n";
 
     std::cout << "R: ";
     for (auto& v : this->rowIdx) {
         std::cout << std::fixed << v << " ";
     }
-    std::cout << std::endl;
+    std::cout << "\n";
 }
 
 void SparseMatrix::join(SparseMatrix&& matrix) {
@@ -374,11 +374,11 @@ double& DenseMatrix::operator()(int rowIdx, int colIdx) {
 }
 
 void DenseMatrix::print(int) {
-    std::cout << this->dimension.row << " " << this->dimension.col << std::endl;
+    std::cout << this->dimension.row << " " << this->dimension.col << "\n";
     for (int r = 0; r < this->dimension.row; r++) {
         for (int c = 0; c < this->dimension.col; c++) {
             std::cout << std::setprecision(5) << std::fixed << " " << (*this)(r, c);
         }
-        std::cout << std::endl;
+        std::cout << "\n";
     }
 }

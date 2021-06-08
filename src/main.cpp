@@ -5,6 +5,7 @@
 #include "utils.h"
 
 int main(int argc, char* argv[]) {
+    std::ios::sync_with_stdio(false);  // faster IO
     double startTime, initTime, mulpTime, endTime, gatherTime;
 
     ProgramOptions options = ProgramOptions::fromCommandLine(argc, argv);
