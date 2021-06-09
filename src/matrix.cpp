@@ -7,9 +7,9 @@
 #include <memory>
 #include <vector>
 
+#include "../densematgen.h"
 #include "common.h"
 #include "context.h"
-#include "../generator/densematgen.h"
 #include "matrix.h"
 #include "mpi_helpers.h"
 
